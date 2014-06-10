@@ -19,19 +19,28 @@
 		foreach($set as $tag=>$value){
 			$str = str_replace($prefix.$tag.$postfix, $value, $str);
 		}
-		if(preg_match_all("#".Morpheus::escape_preg_chars($prefix)."([^\?".Morpheus::escape_preg_chars($postfix)."]{0,})\?([^:]+)[:]([^".Morpheus::escape_preg_chars($postfix)."]{0,})".Morpheus::escape_preg_chars($postfix)."#i", $str, $buffer)){
+		if(preg_match_all("#".Morpheus::escape_preg_chars($prefix)."([\*])?([^\?".Morpheus::escape_preg_chars($postfix)."]{0,})\?([^:]+)[:]([^".Morpheus::escape_preg_chars($postfix)."]{0,})".Morpheus::escape_preg_chars($postfix)."#i", $str, $buffer)){
 			//*debug*/ print '<!-- '; print_r($buffer); print ' -->';
 			if(isset($buffer[0]) && is_array($buffer[0])){foreach($buffer[0] as $i=>$original){
-				$str = str_replace($original, $buffer[(isset($set[$buffer[1][$i]]) && ( is_bool($set[$buffer[1][$i]]) ? $set[$buffer[1][$i]] : TRUE) ? 2 : 3)][$i], $str);
+				$str = str_replace($original, self::_basic_parse_encapsule($buffer[1][$i], $buffer[(isset($set[$buffer[2][$i]]) && ( is_bool($set[$buffer[2][$i]]) ? $set[$buffer[2][$i]] : TRUE) ? 3 : 4)][$i], strtolower($buffer[2][$i])), $str);
 			}}
 		}
-		if(preg_match_all("#".Morpheus::escape_preg_chars($prefix)."([^\|".Morpheus::escape_preg_chars($postfix)."]{0,})[\|]([^".Morpheus::escape_preg_chars($postfix)."]{0,})".Morpheus::escape_preg_chars($postfix)."#i", $str, $buffer)){
+		if(preg_match_all("#".Morpheus::escape_preg_chars($prefix)."([\*])?([^\|".Morpheus::escape_preg_chars($postfix)."]{0,})[\|]([^".Morpheus::escape_preg_chars($postfix)."]{0,})".Morpheus::escape_preg_chars($postfix)."#i", $str, $buffer)){
 			if(isset($buffer[0]) && is_array($buffer[0])){foreach($buffer[0] as $i=>$original){
-				$str = str_replace($original, (isset($set[$buffer[1][$i]]) ? $set[$buffer[1][$i]] : $buffer[2][$i]), $str);
+				$str = str_replace($original, self::_basic_parse_encapsule($buffer[1][$i], (isset($set[$buffer[2][$i]]) ? $set[$buffer[2][$i]] : $buffer[3][$i]), $buffer[2][$i]), $str);
 			}}
 		}
 		if($parse !== FALSE && isset($this)){ #parse only within the ${Morpheus} object
 			$str = $this->_execute_parsers($str);
+		}
+		return $str;
+	}
+	private function _basic_parse_encapsule($trigger, $str, $id=NULL){
+		switch($trigger){
+			case '*':
+				$str = '<div id="'.$id.'">'.$str.'</div>';
+				break;
+			default: /*do nothing*/
 		}
 		return $str;
 	}
