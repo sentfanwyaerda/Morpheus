@@ -43,7 +43,9 @@
 				break;
 			case ':':
 				if(preg_match("#^[:]([a-z0-9]+)([\.]([a-z0-9 _-]+))?[:]$#", $trigger, $buffer)){
-					list($catch, $element, $test, $class) = $buffer;
+					$element = $buffer[1];
+					$test = (isset($buffer[2]) ? $buffer[2] : FALSE);
+					$class = (isset($buffer[3]) ? $buffer[3] : NULL);
 					if(strlen($str) > 0){ $str = '<'.$element.(isset($test) && strlen($test)>1 ? ' class="'.$class.'"' : NULL).'>'.$str.'</'.$element.'>'; }
 				}
 				break;
