@@ -19,13 +19,13 @@
 		foreach($set as $tag=>$value){
 			$str = str_replace($prefix.$tag.$postfix, $value, $str);
 		}
-		if(preg_match_all("#".Morpheus::escape_preg_chars($prefix)."([\*])?([^\?".Morpheus::escape_preg_chars($postfix)."]{0,})\?([^:]+)[:]([^".Morpheus::escape_preg_chars($postfix)."]{0,})".Morpheus::escape_preg_chars($postfix)."#i", $str, $buffer)){
+		if(preg_match_all("#".Morpheus::escape_preg_chars($prefix)."([\*]+|[:][^:]+[:])?([^\?".Morpheus::escape_preg_chars($postfix)."]{0,})\?([^:]+)[:]([^".Morpheus::escape_preg_chars($postfix)."]{0,})".Morpheus::escape_preg_chars($postfix)."#i", $str, $buffer)){
 			//*debug*/ print '<!-- '; print_r($buffer); print ' -->';
 			if(isset($buffer[0]) && is_array($buffer[0])){foreach($buffer[0] as $i=>$original){
 				$str = str_replace($original, self::_basic_parse_encapsule($buffer[1][$i], $buffer[(isset($set[$buffer[2][$i]]) && ( is_bool($set[$buffer[2][$i]]) ? $set[$buffer[2][$i]] : TRUE) ? 3 : 4)][$i], strtolower($buffer[2][$i])), $str);
 			}}
 		}
-		if(preg_match_all("#".Morpheus::escape_preg_chars($prefix)."([\*])?([^\|".Morpheus::escape_preg_chars($postfix)."]{0,})[\|]([^".Morpheus::escape_preg_chars($postfix)."]{0,})".Morpheus::escape_preg_chars($postfix)."#i", $str, $buffer)){
+		if(preg_match_all("#".Morpheus::escape_preg_chars($prefix)."([\*]+|[:][^:]+[:])?([^\|".Morpheus::escape_preg_chars($postfix)."]{0,})[\|]([^".Morpheus::escape_preg_chars($postfix)."]{0,})".Morpheus::escape_preg_chars($postfix)."#i", $str, $buffer)){
 			if(isset($buffer[0]) && is_array($buffer[0])){foreach($buffer[0] as $i=>$original){
 				$str = str_replace($original, self::_basic_parse_encapsule($buffer[1][$i], (isset($set[$buffer[2][$i]]) ? $set[$buffer[2][$i]] : $buffer[3][$i]), $buffer[2][$i]), $str);
 			}}
@@ -36,9 +36,16 @@
 		return $str;
 	}
 	private function _basic_parse_encapsule($trigger, $str, $id=NULL){
-		switch($trigger){
+		switch(substr($trigger, 0, 1)){
 			case '*':
-				$str = '<div id="'.$id.'">'.$str.'</div>';
+				$anchor = (strlen($trigger) >1 ? '<a name="'.$id.'"></a>' : NULL);
+				if(strlen($str) > 0){ $str = '<div'.($id != NULL ? ' id="'.$id.'"' : NULL).'>'.$anchor.$str.'</div>'; }
+				break;
+			case ':':
+				if(preg_match("#^[:]([a-z0-9]+)([\.]([a-z0-9 _-]+))?[:]$#", $trigger, $buffer)){
+					list($catch, $element, $test, $class) = $buffer;
+					if(strlen($str) > 0){ $str = '<'.$element.(isset($test) && strlen($test)>1 ? ' class="'.$class.'"' : NULL).'>'.$str.'</'.$element.'>'; }
+				}
 				break;
 			default: /*do nothing*/
 		}
