@@ -16,6 +16,7 @@
 	
 	/* Basic Template Parser */
 	public function basic_parse_str($str, $set=array(), $prefix='{', $postfix='}', $parse=FALSE){
+		/**/ $str = self::parse_include_str($str, $set, $prefix, $postfix, $parse);
 		foreach($set as $tag=>$value){
 			$str = str_replace($prefix.$tag.$postfix, $value, $str);
 		}
@@ -24,7 +25,7 @@
 			if(isset($buffer[0]) && is_array($buffer[0])){foreach($buffer[0] as $i=>$original){
 				$str = str_replace($original, 
 						self::_basic_parse_encapsule($buffer[1][$i],
-							$buffer[(isset($set[$buffer[2][$i]]) && ( is_bool($set[$buffer[2][$i]]) ? $set[$buffer[2][$i]] : $set[$buffer[2][$i]] != NULL ) ? 3 : 4)][$i],
+							$buffer[(isset($set[$buffer[2][$i]]) && ( is_bool($set[$buffer[2][$i]]) ? $set[$buffer[2][$i]] : (in_array(strtolower($set[$buffer[2][$i]]), array('true','false','yes','no')) ? in_array(strtolower($set[$buffer[2][$i]]), array('true','yes')) : $set[$buffer[2][$i]] != NULL) ) ? 3 : 4)][$i],
 							$buffer[2][$i])
 						, $str);
 			}}
@@ -103,6 +104,21 @@
 			}
 		}
 		else{ $str = str_replace($qout, '\\'.$qout, $str); }
+		return $str;
+	}
+	
+	/*experimental: Morpheus\LaTEX & Morpheus\markdown++ */
+	/**/ function parse_include_str($str, $set=array(), $prefix='{', $postfix='}', $parse=FALSE){
+		if(preg_match_all("#[\\\\]i(nclude)?".Morpheus::escape_preg_chars($prefix)."([^".Morpheus::escape_preg_chars($postfix)."]+)".Morpheus::escape_preg_chars($postfix)."#i", $str, $buffer)){
+			if(isset($buffer[0]) && is_array($buffer[0])){foreach($buffer[0] as $i=>$original){
+				$str = str_replace($buffer[0][$i],
+						self::_basic_parse_encapsule('**',
+							self::basic_parse_template((isset($set['content-root']) ? $set['content-root'] : Morpheus::get_root("content/text")).$buffer[2][$i], $set, $prefix, $postfix, $parse),
+							md5($buffer[2][$i])
+						)
+						, $str);
+			}}
+		}
 		return $str;
 	}
  }
