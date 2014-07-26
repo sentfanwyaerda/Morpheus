@@ -2,6 +2,26 @@
  class Morpheus {
 	var $parsers = array();
 	function Morpheus(){}
+	
+	function morpheus_hook($str){
+		//Detect Morpheus hooks
+		$str = str_replace('</morpheus>', '¤', $str);
+		preg_match_all("#<morpheus([^/>]{0,})?([/][>]|[>]([^¤]{0,})¤)#i", $str, $buffer);
+		foreach($buffer[1] as $i=>$j){
+			preg_match_all("#([a-z-]+)=[\"]([^\"]+)[\"]#i", $buffer[1][$i], $k);
+			$buffer[1][$i] = array();
+			foreach($k[0] as $l=>$m){ $buffer[1][$i][$k[1][$l]] = $k[2][$l]; }
+		}
+		foreach($buffer[2] as $i=>$j){ if($j == '/>'){ unset($buffer[3][$i]); } } unset($buffer[2]);
+		print '<pre>'; print htmlspecialchars(str_replace("¤", '</morpheus>', print_r($buffer, TRUE))); print '</pre>';
+		/*fix*/ foreach($buffer[0] as $i=>$v){ $str = str_replace($buffer[0][$i], '<font color="red">'.md5($buffer[0][$i]).'</font>', $str); }
+		$str = str_replace('¤', '</morpheus>', $str);
+		
+		//Process Morpheus hooks
+		foreach($buffer[0] $i=>$j){}
+		return $str;
+	}
+	
 	function notify($code, $vars=array(), $line=NULL){
 		if(class_exists("Hades")){ return Hades::notify($code, $vars, $line); }
 	}
