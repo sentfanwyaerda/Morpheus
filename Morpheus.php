@@ -5,7 +5,7 @@
 	
 	function morpheus_hook($str){
 		//Detect Morpheus hooks
-		$str = str_replace('</morpheus>', '¤', $str);
+		/*replacement-initiate*/ $str = str_replace('</morpheus>', '¤', $str);
 		preg_match_all("#<morpheus([^/>]{0,})?([/][>]|[>]([^¤]{0,})¤)#i", $str, $buffer);
 		foreach($buffer[1] as $i=>$j){
 			preg_match_all("#([a-z-]+)=[\"]([^\"]+)[\"]#i", $buffer[1][$i], $k);
@@ -14,8 +14,6 @@
 		}
 		foreach($buffer[2] as $i=>$j){ if($j == '/>'){ unset($buffer[3][$i]); } } unset($buffer[2]);
 		//*debug*/ print '<pre>'; print htmlspecialchars(str_replace("¤", '</morpheus>', print_r($buffer, TRUE))); print '</pre>';
-		/*fix*/ foreach($buffer[0] as $i=>$v){ $str = str_replace($buffer[0][$i], '<font color="red">'.md5($buffer[0][$i]).'</font>', $str); }
-		$str = str_replace('¤', '</morpheus>', $str);
 		
 		//Process Morpheus hooks
 		foreach($buffer[0] as $i=>$j){
@@ -24,8 +22,12 @@
 				//*debug*/ print '<pre>'; print htmlspecialchars(print_r($a, TRUE)); print '</pre>';
 				$q = 0;
 				$str = str_replace($a[0][$q], $a[1][$q].$a[2][$q].$buffer[3][$i].$a[3][$q], $str);
+				/*clear*/ $str = str_replace($buffer[0][$i], NULL, $str); 
 			}
 		}
+		
+		//*fix*/ foreach($buffer[0] as $i=>$v){ $str = str_replace($buffer[0][$i], '<font color="red">'.md5($buffer[0][$i]).'</font>', $str); }
+		/*replacement-restore*/ $str = str_replace('¤', '</morpheus>', $str);
 		return $str;
 	}
 	
@@ -45,9 +47,9 @@
 	public function basic_parse_str($str, $set=array(), $prefix='{', $postfix='}', $parse=FALSE){
 		/**/ $str = self::parse_include_str($str, $set, $prefix, $postfix, $parse);
 		foreach($set as $tag=>$value){
-			$str = str_replace($prefix.$tag.$postfix, $value, $str);
+			$str = str_replace($prefix.$tag.$postfix, (is_array($value) ? implode(', ', $value) : (string) $value), $str);
 		}
-		if(preg_match_all("#".Morpheus::escape_preg_chars($prefix)."([\*]+|[:][^:]+[:])?([^\?".Morpheus::escape_preg_chars($postfix)."]{0,})\?([^:]+)[:]([^".Morpheus::escape_preg_chars($postfix)."]{0,})".Morpheus::escape_preg_chars($postfix)."#i", $str, $buffer)){
+		if(preg_match_all("#".Morpheus::escape_preg_chars($prefix)."([\*]+|[:][^:]+[:])?([a-z][^\?".Morpheus::escape_preg_chars($postfix)."]{0,})\?([^:]+)[:]([^".Morpheus::escape_preg_chars($postfix)."]{0,})".Morpheus::escape_preg_chars($postfix)."#i", $str, $buffer)){
 			//*debug*/ print '<!-- '; print_r($buffer); print ' -->';
 			if(isset($buffer[0]) && is_array($buffer[0])){foreach($buffer[0] as $i=>$original){
 				$str = str_replace($original, 
@@ -57,7 +59,7 @@
 						, $str);
 			}}
 		}
-		if(preg_match_all("#".Morpheus::escape_preg_chars($prefix)."([\*]+|[:][^:]+[:])?([^\|".Morpheus::escape_preg_chars($postfix)."]{0,})[\|]([^".Morpheus::escape_preg_chars($postfix)."]{0,})".Morpheus::escape_preg_chars($postfix)."#i", $str, $buffer)){
+		if(preg_match_all("#".Morpheus::escape_preg_chars($prefix)."([\*]+|[:][^:]+[:])?([a-z][^\|".Morpheus::escape_preg_chars($postfix)."]{0,})[\|]([^".Morpheus::escape_preg_chars($postfix)."]{0,})".Morpheus::escape_preg_chars($postfix)."#i", $str, $buffer)){
 			if(isset($buffer[0]) && is_array($buffer[0])){foreach($buffer[0] as $i=>$original){
 				$str = str_replace($original,
 						self::_basic_parse_encapsule($buffer[1][$i],
