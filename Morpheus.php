@@ -47,7 +47,7 @@
 	public function basic_parse_str($str, $set=array(), $prefix='{', $postfix='}', $parse=FALSE){
 		/**/ $str = self::parse_include_str($str, $set, $prefix, $postfix, $parse);
 		foreach($set as $tag=>$value){
-			$str = str_replace($prefix.$tag.$postfix, (is_array($value) ? implode(', ', $value) : (string) $value), $str);
+			$str = str_replace($prefix.$tag.$postfix, (is_array($value) ? json_encode($value) : (string) $value), $str);
 		}
 		if(preg_match_all("#".Morpheus::escape_preg_chars($prefix)."([\*]+|[:][^:]+[:]|[\%\#\.]{1})?([a-z][^\?".Morpheus::escape_preg_chars($postfix)."]{0,})\?([^:]+)[:]([^".Morpheus::escape_preg_chars($postfix)."]{0,})".Morpheus::escape_preg_chars($postfix)."#i", $str, $buffer)){
 			//*debug*/ print '<!-- '; print_r($buffer); print ' -->';
@@ -90,7 +90,8 @@
 			case '%':
 				if(class_exists('Heracles') && method_exists('Heracles','load_record_flags')){
 					$flags = Heracles::load_record_flags(Heracles::get_user_id());
-					$str = (isset($flags[substr($trigger, 1)]) ? $flags[$id] : $str);
+					//*debug*/ print '<!-- '.$id.' :{ '.$str.' } :'.print_r($flags, TRUE).' -->';
+					$str = (isset($flags[$id]) ? $flags[$id] : $str);
 				}
 				break;
 			case '.':
@@ -103,6 +104,7 @@
 				break;
 			default: /*do nothing*/
 		}
+		/*fix*/ $str = (is_array($str) ? json_encode($str) : (string) $str);
 		return $str;
 	}
 	public function basic_parse($src, $set=array()){
