@@ -49,7 +49,7 @@
 		foreach($set as $tag=>$value){
 			$str = str_replace($prefix.$tag.$postfix, (is_array($value) ? implode(', ', $value) : (string) $value), $str);
 		}
-		if(preg_match_all("#".Morpheus::escape_preg_chars($prefix)."([\*]+|[:][^:]+[:]|[%#\.]{1})?([a-z][^\?".Morpheus::escape_preg_chars($postfix)."]{0,})\?([^:]+)[:]([^".Morpheus::escape_preg_chars($postfix)."]{0,})".Morpheus::escape_preg_chars($postfix)."#i", $str, $buffer)){
+		if(preg_match_all("#".Morpheus::escape_preg_chars($prefix)."([\*]+|[:][^:]+[:]|[\%\#\.]{1})?([a-z][^\?".Morpheus::escape_preg_chars($postfix)."]{0,})\?([^:]+)[:]([^".Morpheus::escape_preg_chars($postfix)."]{0,})".Morpheus::escape_preg_chars($postfix)."#i", $str, $buffer)){
 			//*debug*/ print '<!-- '; print_r($buffer); print ' -->';
 			if(isset($buffer[0]) && is_array($buffer[0])){foreach($buffer[0] as $i=>$original){
 				$str = str_replace($original, 
@@ -59,7 +59,7 @@
 						, $str);
 			}}
 		}
-		if(preg_match_all("#".Morpheus::escape_preg_chars($prefix)."([\*]+|[:][^:]+[:]|[%#\.]{1})?([a-z][^\|".Morpheus::escape_preg_chars($postfix)."]{0,})[\|]([^".Morpheus::escape_preg_chars($postfix)."]{0,})".Morpheus::escape_preg_chars($postfix)."#i", $str, $buffer)){
+		if(preg_match_all("#".Morpheus::escape_preg_chars($prefix)."([\*]+|[:][^:]+[:]|[\%\#\.]{1})?([a-z][^\|".Morpheus::escape_preg_chars($postfix)."]{0,})[\|]([^".Morpheus::escape_preg_chars($postfix)."]{0,})".Morpheus::escape_preg_chars($postfix)."#i", $str, $buffer)){
 			if(isset($buffer[0]) && is_array($buffer[0])){foreach($buffer[0] as $i=>$original){
 				$str = str_replace($original,
 						self::_basic_parse_encapsule($buffer[1][$i],
@@ -90,7 +90,7 @@
 			case '%':
 				if(class_exists('Heracles') && method_exists('Heracles','load_record_flags')){
 					$flags = Heracles::load_record_flags(Heracles::get_user_id());
-					$str = (isset($flags[substr($trigger, 1)]) ? $flags[$id] : FALSE);
+					$str = (isset($flags[substr($trigger, 1)]) ? $flags[$id] : $str);
 				}
 				break;
 			case '.':
