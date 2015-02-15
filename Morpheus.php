@@ -36,6 +36,8 @@
 	}
 	function get_root($sub=NULL){
 		if(class_exists("Hades")){ return Hades::get_root($sub); }
+		/* add alias of the Heracles method */
+		return dirname(__FILE__).'/';
 	}
 	
 	/* Parser Engine*/
@@ -44,9 +46,9 @@
 	}
 	
 	/* Basic Template Parser */
-	public function basic_parse_str($str, $set=array(), $prefix='{', $postfix='}', $parse=FALSE){
-		/**/ $str = self::parse_include_str($str, $set, $prefix, $postfix, $parse);
-		foreach($set as $tag=>$value){
+	public function basic_parse_str($str, $flags=array(), $prefix='{', $postfix='}', $parse=FALSE){
+		/**/ $str = self::parse_include_str($str, $flags, $prefix, $postfix, $parse);
+		foreach($flags as $tag=>$value){
 			$str = str_replace($prefix.$tag.$postfix, (is_array($value) ? json_encode($value) : (string) $value), $str);
 		}
 		if(preg_match_all("#".Morpheus::escape_preg_chars($prefix)."([\*]+|[:][^:]+[:]|[\%\#\.]{1})?([a-z][^\?".Morpheus::escape_preg_chars($postfix)."]{0,})\?([^:]+)[:]([^".Morpheus::escape_preg_chars($postfix)."]{0,})".Morpheus::escape_preg_chars($postfix)."#i", $str, $buffer)){
@@ -54,7 +56,7 @@
 			if(isset($buffer[0]) && is_array($buffer[0])){foreach($buffer[0] as $i=>$original){
 				$str = str_replace($original, 
 						self::_basic_parse_encapsule($buffer[1][$i],
-							$buffer[(isset($set[$buffer[2][$i]]) && ( is_bool($set[$buffer[2][$i]]) ? $set[$buffer[2][$i]] : (in_array(strtolower($set[$buffer[2][$i]]), array('true','false','yes','no')) ? in_array(strtolower($set[$buffer[2][$i]]), array('true','yes')) : $set[$buffer[2][$i]] != NULL) ) ? 3 : 4)][$i],
+							$buffer[(isset($flags[$buffer[2][$i]]) && ( is_bool($flags[$buffer[2][$i]]) ? $flags[$buffer[2][$i]] : (in_array(strtolower($flags[$buffer[2][$i]]), array('true','false','yes','no')) ? in_array(strtolower($flags[$buffer[2][$i]]), array('true','yes')) : $flags[$buffer[2][$i]] != NULL) ) ? 3 : 4)][$i],
 							$buffer[2][$i])
 						, $str);
 			}}
@@ -63,7 +65,7 @@
 			if(isset($buffer[0]) && is_array($buffer[0])){foreach($buffer[0] as $i=>$original){
 				$str = str_replace($original,
 						self::_basic_parse_encapsule($buffer[1][$i],
-							(isset($set[$buffer[2][$i]]) ? $set[$buffer[2][$i]] : $buffer[3][$i]),
+							(isset($flags[$buffer[2][$i]]) ? $flags[$buffer[2][$i]] : $buffer[3][$i]),
 							$buffer[2][$i])
 						, $str);
 			}}
@@ -107,12 +109,12 @@
 		/*fix*/ $str = (is_array($str) ? json_encode($str) : (string) $str);
 		return $str;
 	}
-	public function basic_parse($src, $set=array()){
+	public function basic_parse($src, $flags=array()){
 		$prefix='{';
 		$postfix='}';
-		return Morpheus::basic_parse_template($src, $set, $prefix, $postfix, TRUE);
+		return Morpheus::basic_parse_template($src, $flags, $prefix, $postfix, TRUE);
 	}
-	public function basic_parse_template($src, $set=array(), $prefix='{', $postfix='}', $parse=FALSE){
+	public function basic_parse_template($src, $flags=array(), $prefix='{', $postfix='}', $parse=FALSE){
 		if(file_exists($src)){
 			$str = file_get_contents($src);
 			Morpheus::notify(array(__METHOD__.'.exists', 200), array("src"=>str_replace(Morpheus::get_root(), NULL, $src)));
@@ -130,7 +132,7 @@
 				Morpheus::notify(__METHOD__.'.failed', array("src"=>str_replace(Morpheus::get_root(), NULL, $src)));
 			}
 		}
-		return Morpheus::basic_parse_str($str, $set, $prefix, $postfix, $parse);
+		return Morpheus::basic_parse_str($str, $flags, $prefix, $postfix, $parse);
 	}
 	public function escape_preg_chars($str, $qout=array(), $merge=FALSE){
 		if($merge !== FALSE){
@@ -153,12 +155,12 @@
 	}
 	
 	/*experimental: Morpheus\LaTEX & Morpheus\markdown++ */
-	/**/ function parse_include_str($str, $set=array(), $prefix='{', $postfix='}', $parse=FALSE){
+	/**/ function parse_include_str($str, $flags=array(), $prefix='{', $postfix='}', $parse=FALSE){
 		if(preg_match_all("#[\\\\]i(nclude)?".Morpheus::escape_preg_chars($prefix)."([^".Morpheus::escape_preg_chars($postfix)."]+)".Morpheus::escape_preg_chars($postfix)."#i", $str, $buffer)){
 			if(isset($buffer[0]) && is_array($buffer[0])){foreach($buffer[0] as $i=>$original){
 				$str = str_replace($buffer[0][$i],
 						self::_basic_parse_encapsule('**',
-							self::basic_parse_template((isset($set['content-root']) ? $set['content-root'] : Morpheus::get_root("content/text")).$buffer[2][$i], $set, $prefix, $postfix, $parse),
+							self::basic_parse_template((isset($flags['content-root']) ? $flags['content-root'] : Morpheus::get_root("content/text")).$buffer[2][$i], $flags, $prefix, $postfix, $parse),
 							md5($buffer[2][$i])
 						)
 						, $str);
