@@ -1,6 +1,9 @@
 <?php
- class Morpheus {
-	var $parsers = array();
+class Morpheus {
+	private $_parsers = array();
+	private $_template;
+	
+	
 	function Morpheus(){}
 	
 	function morpheus_hook($str){
@@ -155,7 +158,7 @@
 	}
 	
 	/*experimental: Morpheus\LaTEX & Morpheus\markdown++ */
-	/**/ function parse_include_str($str, $flags=array(), $prefix='{', $postfix='}', $parse=FALSE){
+	/*public*/ function parse_include_str($str, $flags=array(), $prefix='{', $postfix='}', $parse=FALSE){
 		if(preg_match_all("#[\\\\]i(nclude)?".Morpheus::escape_preg_chars($prefix)."([^".Morpheus::escape_preg_chars($postfix)."]+)".Morpheus::escape_preg_chars($postfix)."#i", $str, $buffer)){
 			if(isset($buffer[0]) && is_array($buffer[0])){foreach($buffer[0] as $i=>$original){
 				$str = str_replace($buffer[0][$i],
@@ -168,5 +171,78 @@
 		}
 		return $str;
 	}
- }
- ?>
+	
+	/*Mustache*/
+	function mustache($template, $obj=array(), $prefix='{{{', $postfix='}}}'){
+		/*fix*/ if(isset($this) && ( is_array($template) || is_object($template) ) ){ $obj = $template; $template = $this->get_template(); }
+		
+		$str = $template; $arr = array();
+		if(is_object($obj)){
+			$class = get_class($obj);
+			foreach(get_object_vars($obj) as $key=>$value){
+				if(!preg_match('#^[_]#', $key)){ $arr[$key] = $value; }
+			}
+			//*debug*/ print_r(get_class_methods($obj));
+			foreach(get_class_methods($obj) as $i=>$method){
+				//https://stackoverflow.com/questions/3989190/get-number-of-arguments-for-a-class-function
+				$classMethod = new ReflectionMethod($class,$method);
+				$cmParameters = $classMethod->getParameters();
+				//*debug*/ print $class.'::'.$method.' ('.count($cmParameters).') = '; print_r($classMethod->getParameters());
+				if(!preg_match('#^[_]#', $method) && ($method != $class) ){
+					$bool = TRUE;
+					foreach($cmParameters as $j=>$key){
+						$bool = ($bool && isset($arr[$cmParameters[$j]->name]) ? TRUE : FALSE);
+					}
+					if($bool){
+						switch(count($cmParameters)){
+							case 1: $arr[$method] = $obj->$method($arr[$cmParameters[0]->name]); break;
+							case 2: $arr[$method] = $obj->$method($arr[$cmParameters[0]->name], $arr[$cmParameters[1]->name]); break;
+							case 3: $arr[$method] = $obj->$method($arr[$cmParameters[0]->name], $arr[$cmParameters[1]->name], $arr[$cmParameters[2]->name]); break;
+							case 4: $arr[$method] = $obj->$method($arr[$cmParameters[0]->name], $arr[$cmParameters[1]->name], $arr[$cmParameters[2]->name], $arr[$cmParameters[3]->name]); break;
+							case 5: $arr[$method] = $obj->$method($arr[$cmParameters[0]->name], $arr[$cmParameters[1]->name], $arr[$cmParameters[2]->name], $arr[$cmParameters[3]->name], $arr[$cmParameters[4]->name]); break;
+							case 6: $arr[$method] = $obj->$method($arr[$cmParameters[0]->name], $arr[$cmParameters[1]->name], $arr[$cmParameters[2]->name], $arr[$cmParameters[3]->name], $arr[$cmParameters[4]->name], $arr[$cmParameters[5]->name]); break;
+							case 0: $arr[$method] = $obj->$method(); break;
+							default: if(!isset($arr[$method])){$arr[$method] = NULL;}
+						}
+					}
+				}
+			}
+		}
+		elseif(is_array($obj)){
+			$arr = $obj;
+		}
+		
+		/*+ Partials {{> mustache}} */
+		/*+ Sections and inverted Sections: {{#mustache}} ... {{/mustache}} */
+		
+		if(strlen($prefix) >= 3 && strlen($postfix) >= 3){ $str = self::basic_parse_str($str, $arr, substr($prefix, 0, 3), substr($postfix, 0, 3), TRUE); }
+		$str = self::basic_parse_str($str, $arr, substr($prefix, 0, 2).'&', substr($postfix, 0, 2), TRUE);
+		$str = self::basic_parse_str($str, self::htmlspecialchars($arr), substr($prefix, 0, 2), substr($postfix, 2), TRUE);
+	 	return $str;
+	}
+	public function /*recursive*/ htmlspecialchars($o){
+		if(is_array($o)){
+			foreach($o as $i=>$j){ $o[$i] = self::htmlspecialchars($j); }
+		} elseif(is_object($o)){
+			foreach(get_object_vars($o) as $key=>$value){ $o->$key = self::htmlspecialchars($value); }
+		} else { return htmlspecialchars($o); }
+		return $o;
+	}
+	 
+	/*Delayed rendering*/
+	public function set_template($template=NULL){
+		if(isset($this)){
+			$this->_template = $template;
+		}
+	}
+	public function get_template(){ return (isset($this) && isset($this->_template) ? $this->_template : NULL); }
+	function __toString(){
+		if(isset($this) && isset($this->_template) ){
+			return $this->mustache($this->_template, $this);
+		} else { return NULL; }
+	}
+	
+	
+	function taxed_value($value){ return round( $value * (1 / 1.21) , 2); }
+}
+?>
