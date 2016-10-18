@@ -2,7 +2,8 @@
 class Morpheus {
 	private $_parsers = array();
 	private $_template;
-	
+	private $_src = FALSE;
+	private $_args = array();
 	
 	function Morpheus(){}
 	
@@ -54,7 +55,7 @@ class Morpheus {
 		foreach($flags as $tag=>$value){
 			$str = str_replace($prefix.$tag.$postfix, (is_array($value) ? json_encode($value) : (string) $value), $str);
 		}
-		if(preg_match_all("#".Morpheus::escape_preg_chars($prefix)."([\*]+|[:][^:]+[:]|[\%\#\.]{1})?([a-z][^\?".Morpheus::escape_preg_chars($postfix)."]{0,})\?([^:]+)[:]([^".Morpheus::escape_preg_chars($postfix)."]{0,})".Morpheus::escape_preg_chars($postfix)."#i", $str, $buffer)){
+		if(preg_match_all("#".Morpheus::escape_preg_chars($prefix)."([\*]+|[:][^:]+[:]|[\%\@\.]{1})?([a-z][^\?".Morpheus::escape_preg_chars($postfix)."]{0,})\?([^:]+)[:]([^".Morpheus::escape_preg_chars($postfix)."]{0,})".Morpheus::escape_preg_chars($postfix)."#i", $str, $buffer)){
 			//*debug*/ print '<!-- '; print_r($buffer); print ' -->';
 			if(isset($buffer[0]) && is_array($buffer[0])){foreach($buffer[0] as $i=>$original){
 				$str = str_replace($original, 
@@ -64,7 +65,7 @@ class Morpheus {
 						, $str);
 			}}
 		}
-		if(preg_match_all("#".Morpheus::escape_preg_chars($prefix)."([\*]+|[:][^:]+[:]|[\%\#\.]{1})?([a-z][^\|".Morpheus::escape_preg_chars($postfix)."]{0,})[\|]([^".Morpheus::escape_preg_chars($postfix)."]{0,})".Morpheus::escape_preg_chars($postfix)."#i", $str, $buffer)){
+		if(preg_match_all("#".Morpheus::escape_preg_chars($prefix)."([\*]+|[:][^:]+[:]|[\%\@\.]{1})?([a-z][^\|".Morpheus::escape_preg_chars($postfix)."]{0,})[\|]([^".Morpheus::escape_preg_chars($postfix)."]{0,})".Morpheus::escape_preg_chars($postfix)."#i", $str, $buffer)){
 			if(isset($buffer[0]) && is_array($buffer[0])){foreach($buffer[0] as $i=>$original){
 				$str = str_replace($original,
 						self::_basic_parse_encapsule($buffer[1][$i],
@@ -104,9 +105,10 @@ class Morpheus {
 					//implement like % (Heracles)
 				}
 				break;
-			case '#':
+			case '@': case '!': case '~': case '\\':
 				///if(class_exists('undefined')){}
 				break;
+			// case '#': case '^': case '/': /* Mustache uses these for (inverted) sections */ break;
 			default: /*do nothing*/
 		}
 		/*fix*/ $str = (is_array($str) ? json_encode($str) : (string) $str);
@@ -179,6 +181,8 @@ class Morpheus {
 		$str = $template; $arr = array();
 		if(is_object($obj)){
 			$class = get_class($obj);
+			if(isset($this)){ $arr = array_merge($this->_args, $arr); }
+			if(isset($obj->_args)){ $arr = array_merge($obj->_args, $arr); }
 			foreach(get_object_vars($obj) as $key=>$value){
 				if(!preg_match('#^[_]#', $key)){ $arr[$key] = $value; }
 			}
@@ -210,9 +214,17 @@ class Morpheus {
 		}
 		elseif(is_array($obj)){
 			$arr = $obj;
+			if(isset($this)){ $arr = array_merge($this->_args, $arr); }
 		}
 		
 		/*+ Partials {{> mustache}} */
+		if(preg_match_all("#".Morpheus::escape_preg_chars(substr($prefix, 0, 2))."([\>]\s?([^\|\?".Morpheus::escape_preg_chars($postfix)."]{0,}))([\|\?][^".Morpheus::escape_preg_chars($postfix)."]+)?".Morpheus::escape_preg_chars(substr($postfix, 0, 2))."#", $str, $buff)){
+			foreach($buffer[1] as $i=>$partial){
+				$arr[$partial] = self::load_template($buffer[2][$i]);
+				if(isset($this)){ $this->_args[$partial] = $arr[$partial]; }
+			}
+		}
+		
 		/*+ Sections and inverted Sections: {{#mustache}} ... {{/mustache}} */
 		
 		if(strlen($prefix) >= 3 && strlen($postfix) >= 3){ $str = self::basic_parse_str($str, $arr, substr($prefix, 0, 3), substr($postfix, 0, 3), TRUE); }
@@ -236,13 +248,22 @@ class Morpheus {
 		}
 	}
 	public function get_template(){ return (isset($this) && isset($this->_template) ? $this->_template : NULL); }
+	public function load_template($src=NULL, $ext=TRUE){
+		if($ext === FALSE){ $ext = array(); }
+		elseif($ext === TRUE || (!is_string($ext) && !is_array($ext))){ $ext = array('m','md','markdown','morpheus','mustache','html','txt','taskpaper','template'); /*in order of importance*/ }
+		elseif(is_string($ext) && strlen($ext) > 0){ $ext = array($ext); }
+		if($template === NULL && isset($this->_src) ){ $src = $this->_src; }
+		foreach(array_merge(array(NULL), $ext) as $i=>$x){
+			if(file_exists( Morpheus::get_root("content/text").$src.($x !== NULL ? '.'.$x : NULL) )){
+				return file_get_contents( Morpheus::get_root("content/text").$src.($x !== NULL ? '.'.$x : NULL) );
+			}
+		}
+		return FALSE;
+	}
 	function __toString(){
 		if(isset($this) && isset($this->_template) ){
 			return $this->mustache($this->_template, $this);
 		} else { return NULL; }
 	}
-	
-	
-	function taxed_value($value){ return round( $value * (1 / 1.21) , 2); }
 }
 ?>

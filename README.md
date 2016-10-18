@@ -12,3 +12,5 @@ $result = Morpheus::generate($morph_file, TRUE);
 /*on default and FALSE will do an*/ $result = Morpheus::lookup($morph_file);
 (bool) Morpheus::cache($morph_file, $result);
 ```
+
+> More documentation will be available in [the manual](/manual/morpheus)
