@@ -1,11 +1,30 @@
 <?php
 class Morpheus {
 	private $_parsers = array();
-	private $_template;
+	private $_template = "";
 	private $_src = FALSE;
 	private $_args = array();
 	
-	function Morpheus(){}
+	function Morpheus($a=NULL, $b=array()){
+		if($b === array()){ $this->_args = array(); }
+		if(!($a === NULL) && is_string($a)){
+			if(preg_match("#[\.](".implode('|', Morpheus::get_file_extensions()).")$#", $a)){
+				$this->_src = $a;
+				$this->_template = $this->load_template($this->_src, FALSE);
+			} /*/
+			elseif(class_exists('Hades') && preg_match("#^([\\]?[a-z][a-z_]+([\\][a-z_]+)*)[:]{2}([a-z_]+)$#", $a, $buf) && class_exists($buf[1]) && method_exists($buf[1], $buf[3]) && method_exists($buf[1], 'validate_hades_elements') ){
+				$nam = $buf[1]; $other = new $nam(); $act = $buf[3];
+				if($other->validate_hades_elements($act)){
+					$this->_src = $a;
+					$other->$act( & $this->_args);
+					$this->_template = $other;
+				} else { $this->_template = $a; }
+			} /*/
+			else{
+				$this->_template = $a;
+			}
+		}
+	}
 	
 	function morpheus_hook($str){
 		//Detect Morpheus hooks
@@ -218,7 +237,7 @@ class Morpheus {
 		}
 		
 		/*+ Partials {{> mustache}} */
-		if(preg_match_all("#".Morpheus::escape_preg_chars(substr($prefix, 0, 2))."([\>]\s?([^\|\?".Morpheus::escape_preg_chars($postfix)."]{0,}))([\|\?][^".Morpheus::escape_preg_chars($postfix)."]+)?".Morpheus::escape_preg_chars(substr($postfix, 0, 2))."#", $str, $buff)){
+		if(preg_match_all("#".Morpheus::escape_preg_chars(substr($prefix, 0, 2))."([\>]\s?([^\|\?".Morpheus::escape_preg_chars($postfix)."]{0,}))([\|\?][^".Morpheus::escape_preg_chars($postfix)."]+)?".Morpheus::escape_preg_chars(substr($postfix, 0, 2))."#", $str, $buffer)){
 			foreach($buffer[1] as $i=>$partial){
 				$arr[$partial] = self::load_template($buffer[2][$i]);
 				if(isset($this)){ $this->_args[$partial] = $arr[$partial]; }
@@ -250,7 +269,7 @@ class Morpheus {
 	public function get_template(){ return (isset($this) && isset($this->_template) ? $this->_template : NULL); }
 	public function load_template($src=NULL, $ext=TRUE){
 		if($ext === FALSE){ $ext = array(); }
-		elseif($ext === TRUE || (!is_string($ext) && !is_array($ext))){ $ext = array('m','md','markdown','morpheus','mustache','html','txt','taskpaper','template'); /*in order of importance*/ }
+		elseif($ext === TRUE || (!is_string($ext) && !is_array($ext))){ $ext = Morpheus::get_file_extensions(); }
 		elseif(is_string($ext) && strlen($ext) > 0){ $ext = array($ext); }
 		if($template === NULL && isset($this->_src) ){ $src = $this->_src; }
 		foreach(array_merge(array(NULL), $ext) as $i=>$x){
@@ -260,6 +279,12 @@ class Morpheus {
 		}
 		return FALSE;
 	}
+	public function get_file_extensions(){
+		 /*in order of importance*/ 
+		return array('m','template','morph','morpheus','mustache','md','markdown','json','html','txt','taskpaper');
+	}
+	
+	
 	function __toString(){
 		if(isset($this) && isset($this->_template) ){
 			return $this->mustache($this->_template, $this);
