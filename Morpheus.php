@@ -1,8 +1,8 @@
 <?php
 class Morpheus {
-	private $_parsers = array();
-	private $_template = "";
+	//private $_parsers = array();
 	private $_src = FALSE;
+	private $_template = "";
 	private $_args = array();
 	
 	function Morpheus($a=NULL, $b=array()){
@@ -11,15 +11,15 @@ class Morpheus {
 			if(preg_match("#[\.](".implode('|', Morpheus::get_file_extensions()).")$#", $a)){
 				$this->_src = $a;
 				$this->_template = $this->load_template($this->_src, FALSE);
-			} /*/
+			} //*/
 			elseif(class_exists('Hades') && preg_match("#^([\\]?[a-z][a-z_]+([\\][a-z_]+)*)[:]{2}([a-z_]+)$#", $a, $buf) && class_exists($buf[1]) && method_exists($buf[1], $buf[3]) && method_exists($buf[1], 'validate_hades_elements') ){
 				$nam = $buf[1]; $other = new $nam(); $act = $buf[3];
 				if($other->validate_hades_elements($act)){
 					$this->_src = $a;
-					$other->$act( & $this->_args);
+					$other->$act($this->_args);
 					$this->_template = $other;
 				} else { $this->_template = $a; }
-			} /*/
+			} //*/
 			else{
 				$this->_template = $a;
 			}
@@ -55,10 +55,11 @@ class Morpheus {
 	}
 	
 	function notify($code, $vars=array(), $line=NULL){
-		if(class_exists("Hades")){ return Hades::notify($code, $vars, $line); }
+		if(class_exists("Hades") && defined('HADES') && isset(${HADES})){ return Hades::notify($code, $vars, $line); }
+		return FALSE;
 	}
 	function get_root($sub=NULL){
-		if(class_exists("Hades")){ return Hades::get_root($sub); }
+		if(class_exists("Hades") && defined('HADES') && isset(${HADES})){ return Hades::get_root($sub); }
 		/* add alias of the Heracles method */
 		return dirname(__FILE__).'/';
 	}
@@ -141,19 +142,19 @@ class Morpheus {
 	public function basic_parse_template($src, $flags=array(), $prefix='{', $postfix='}', $parse=FALSE){
 		if(file_exists($src)){
 			$str = file_get_contents($src);
-			Morpheus::notify(array(__METHOD__.'.exists', 200), array("src"=>str_replace(Morpheus::get_root(), NULL, $src)));
+			Morpheus::notify(array(__METHOD__.'.exists', 200), array("src"=>str_replace(Morpheus::get_root('text/plain'), NULL, $src)));
 			if(strlen($str) <= 0){
-				$str = Morpheus::basic_parse_template(Morpheus::get_root("content/text").'000-empty-document.md', array('src'=>$src, "document"=>basename($src)));
-				Morpheus::notify(000, array("src"=>str_replace(Morpheus::get_root(), NULL, $src)));
+				$str = Morpheus::basic_parse_template(Morpheus::get_root("text/error").'000-empty-document.md', array('src'=>$src, "document"=>basename($src)));
+				Morpheus::notify(000, array("src"=>str_replace(Morpheus::get_root('text/plain'), NULL, $src)));
 			}
 		} else {
-			if($src != Morpheus::get_root("content/text").'404-not-found.md'){
-				$str = Morpheus::basic_parse_template(Morpheus::get_root("content/text").'404-not-found.md', array('src'=>$src, "document"=>basename($src)));
-				Morpheus::notify(404, array("src"=>str_replace(Morpheus::get_root(), NULL, $src)));
+			if($src != Morpheus::get_root("text/error").'404-not-found.md'){
+				$str = Morpheus::basic_parse_template(Morpheus::get_root("text/error").'404-not-found.md', array('src'=>$src, "document"=>basename($src)));
+				Morpheus::notify(404, array("src"=>str_replace(Morpheus::get_root('text/plain'), NULL, $src)));
 			}
 			else {
 				$str = NULL;
-				Morpheus::notify(__METHOD__.'.failed', array("src"=>str_replace(Morpheus::get_root(), NULL, $src)));
+				Morpheus::notify(__METHOD__.'.failed', array("src"=>str_replace(Morpheus::get_root('text/plain'), NULL, $src)));
 			}
 		}
 		return Morpheus::basic_parse_str($str, $flags, $prefix, $postfix, $parse);
@@ -184,7 +185,7 @@ class Morpheus {
 			if(isset($buffer[0]) && is_array($buffer[0])){foreach($buffer[0] as $i=>$original){
 				$str = str_replace($buffer[0][$i],
 						self::_basic_parse_encapsule('**',
-							self::basic_parse_template((isset($flags['content-root']) ? $flags['content-root'] : Morpheus::get_root("content/text")).$buffer[2][$i], $flags, $prefix, $postfix, $parse),
+							self::basic_parse_template((isset($flags['content-root']) ? $flags['content-root'] : Morpheus::get_root("text/plain")).$buffer[2][$i], $flags, $prefix, $postfix, $parse),
 							md5($buffer[2][$i])
 						)
 						, $str);
@@ -273,8 +274,8 @@ class Morpheus {
 		elseif(is_string($ext) && strlen($ext) > 0){ $ext = array($ext); }
 		if($template === NULL && isset($this->_src) ){ $src = $this->_src; }
 		foreach(array_merge(array(NULL), $ext) as $i=>$x){
-			if(file_exists( Morpheus::get_root("content/text").$src.($x !== NULL ? '.'.$x : NULL) )){
-				return file_get_contents( Morpheus::get_root("content/text").$src.($x !== NULL ? '.'.$x : NULL) );
+			if(file_exists( Morpheus::get_root("text/plain").$src.($x !== NULL ? '.'.$x : NULL) )){
+				return file_get_contents( Morpheus::get_root("text/plain").$src.($x !== NULL ? '.'.$x : NULL) );
 			}
 		}
 		return FALSE;
