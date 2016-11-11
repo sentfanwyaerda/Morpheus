@@ -2,14 +2,16 @@
 class Morpheus {
 	//private $_parsers = array();
 	private $_src = FALSE;
+	private $_domain = "text/plain";
 	private $_template = "";
 	private $_args = array();
 	
-	function Morpheus($a=NULL, $b=array()){
+	function Morpheus($a=NULL, $b=array(), $c=FALSE){
 		if($b === array()){ $this->_args = array(); }
 		if(!($a === NULL) && is_string($a)){
 			if(preg_match("#[\.](".implode('|', Morpheus::get_file_extensions()).")$#", $a)){
 				$this->_src = $a;
+				if(!($c===FALSE)){ $this->_domain = $c; }
 				$this->_template = $this->load_template($this->_src, FALSE);
 			} //*/
 			elseif(class_exists('Hades') && preg_match("#^([\\]?[a-z][a-z_]+([\\][a-z_]+)*)[:]{2}([a-z_]+)$#", $a, $buf) && class_exists($buf[1]) && method_exists($buf[1], $buf[3]) && method_exists($buf[1], 'validate_hades_elements') ){
@@ -55,13 +57,33 @@ class Morpheus {
 	}
 	
 	function notify($code, $vars=array(), $line=NULL){
-		if(class_exists("Hades") && defined('HADES') && isset(${HADES})){ return Hades::notify($code, $vars, $line); }
+		//*debug*/ print '<!-- Morpheus::notify '.preg_replace('#\s+#', ' ', print_r($code, TRUE).' '.print_r($vars, TRUE).' ('.print_r($line, TRUE)).') -->'."\n";
+		if(class_exists("Hades") ){ return Hades::notify($code, $vars, $line); }
 		return FALSE;
 	}
 	function get_root($sub=NULL){
-		if(class_exists("Hades") && defined('HADES') && isset(${HADES})){ return Hades::get_root($sub); }
+		//*debug*/ print '<!-- Morpheus::get_root '.preg_replace('#\s+#', ' ', print_r($sub, TRUE)).' -->'."\n";
+		if(class_exists("Hades") && defined('HADES') && isset(${HADES}) ){ return Hades::get_root($sub); }
 		/* add alias of the Heracles method */
 		return dirname(__FILE__).'/';
+	}
+	function get_file_uri($name, $sub=NULL, $ext=FALSE, $result_number=0, $with_prefix=TRUE){
+		//*debug*/ print '<!-- Morpheus::get_file_uri '.preg_replace('#\s+#', ' ', print_r($name, TRUE).' '.print_r($sub, TRUE).' '.print_r($ext, TRUE)).' -->'."\n";
+		//*debug*/ global ${HADES}; print "\t".'<!-- '.print_r(class_exists("Hades"), TRUE).' | '.print_r(defined('HADES'), TRUE).' | '.print_r(isset(${HADES}), TRUE).' -->'."\n";
+		if(class_exists("Hades") && defined('HADES') ){ global ${HADES}; if( isset(${HADES}) ){ return Hades::get_file_uri($name, $sub, $ext, $result_number, $with_prefix); }}
+		
+		if($ext === FALSE){ $ext = array_merge(array(NULL), self::get_file_extensions()); }
+		/*fix*/ if(!is_array($sub)){ $sub = array($sub); }
+		foreach($sub as $i=>$m){
+			if($mroot = self::get_root($m)){
+				if(is_dir($mroot)){
+					foreach($ext as $j=>$x){
+						if(file_exists($mroot.$name.($x === NULL ? NULL : '.'.$x))){ return $mroot.$name.($x === NULL ? NULL : '.'.$x); }
+					}
+				}
+			}
+		}
+		return FALSE;
 	}
 	
 	/* Parser Engine*/
@@ -268,7 +290,7 @@ class Morpheus {
 		}
 	}
 	public function get_template(){ return (isset($this) && isset($this->_template) ? $this->_template : NULL); }
-	public function load_template($src=NULL, $ext=TRUE){
+	public function _old_load_template($src=NULL, $ext=TRUE){
 		if($ext === FALSE){ $ext = array(); }
 		elseif($ext === TRUE || (!is_string($ext) && !is_array($ext))){ $ext = Morpheus::get_file_extensions(); }
 		elseif(is_string($ext) && strlen($ext) > 0){ $ext = array($ext); }
@@ -280,6 +302,14 @@ class Morpheus {
 		}
 		return FALSE;
 	}
+	public function load_template($src=NULL, $ext=NULL){
+		//Morpheus::notify(__METHOD__, array('src'=>$src, 'ext'=>$ext) );
+		$sub = (isset($this) && isset($this->_domain) ? $this->_domain : NULL);
+		if($uri = self::get_file_uri($src, $sub, $ext)){
+			return file_get_contents($uri);
+		}
+		return FALSE;
+	}
 	public function get_file_extensions(){
 		 /*in order of importance*/ 
 		return array('m','template','morph','morpheus','mustache','md','markdown','json','html','txt','taskpaper');
@@ -287,6 +317,7 @@ class Morpheus {
 	
 	
 	function __toString(){
+		Morpheus::notify(__METHOD__);
 		if(isset($this) && isset($this->_template) ){
 			return $this->mustache($this->_template, $this);
 		} else { return NULL; }
