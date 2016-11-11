@@ -282,6 +282,12 @@ class Morpheus {
 		} else { return htmlspecialchars($o); }
 		return $o;
 	}
+
+	function get_flags($str=NULL, $prefix='{', $postfix='}', $select=4){
+		if($str === NULL && isset($this)){ $str = $this->_template; }
+		preg_match_all('#'.Morpheus::escape_preg_chars($prefix).'([\*]{1,2})?([\:]([^\:]+)[\:])?(([\.\%\@\!\~\\\\]|[>\&\#\/\^]\s?)?([a-z0-9_-]+))([\|]([^'.Morpheus::escape_preg_chars($postfix).']*)|[\?]([^\:]*)[\:]([^'.Morpheus::escape_preg_chars($postfix).']*))?'.Morpheus::escape_preg_chars($postfix).'#i', $str, $buffer);
+		return (is_array($select) || !isset($buffer[$select]) ? $buffer : array_unique($buffer[$select]));
+	}
 	 
 	/*Delayed rendering*/
 	public function set_template($template=NULL){
