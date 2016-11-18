@@ -283,10 +283,31 @@ class Morpheus {
 		return $o;
 	}
 
-	function get_flags($str=NULL, $prefix='{', $postfix='}', $select=4){
+	function get_flags($str=NULL, $prefix='{', $postfix='}', $select=5){
 		if($str === NULL && isset($this)){ $str = $this->_template; }
-		preg_match_all('#'.Morpheus::escape_preg_chars($prefix).'([\*]{1,2})?([\:]([^\:]+)[\:])?(([\.\%\@\!\~\\\\]|[>\&\#\/\^]\s?)?([a-z0-9_-]+))([\|]([^'.Morpheus::escape_preg_chars($postfix).']*)|[\?]([^\:]*)[\:]([^'.Morpheus::escape_preg_chars($postfix).']*))?'.Morpheus::escape_preg_chars($postfix).'#i', $str, $buffer);
+		preg_match_all('#'.Morpheus::escape_preg_chars($prefix).'([\*]{1,2}|[\#])?([\:]([^\:]+)[\:]|[\<]([^\>]+)[\>])?(([\.\%\@\!\~\\\\]|[>\&\/\^]\s?)?([a-z0-9_-]+))([\|]([^'.Morpheus::escape_preg_chars($postfix).']*)|[\?]([^\:]*)[\:]([^'.Morpheus::escape_preg_chars($postfix).']*))?'.Morpheus::escape_preg_chars($postfix).'#i', $str, $buffer);
 		return (is_array($select) || !isset($buffer[$select]) ? $buffer : array_unique($buffer[$select]));
+	}
+	
+	function get_tags($str=NULL, $all=TRUE){
+		if($str === NULL && isset($this)){ $str = $this->_template; }
+		if(!($all === TRUE)){ $str = preg_replace('#^([^\n\r]+)(.*)$#', '\\1', $str); } /*check for tags in only the first line*/
+		$tags = array();
+		preg_match_all('#(^|\s)[\@]([a-z0-9_\:\.\/\-]+)([\(]([^\)]+)[\)])?(\s|$)#i', $str, $buffer);
+		foreach($buffer[1] as $i=>$tag){
+			if(isset($tags[$tag])){
+				if(is_array($tags[$tag])){
+					$tags[$tag][] = $buffer[3][$i];
+				}
+				else{
+					$tags[$tag] = array($tags[$tag], $buffer[3][$i]);
+				}
+			}
+			else{
+				$tags[$tag] = $buffer[3][$i];
+			}
+		}
+		return $tags;
 	}
 	 
 	/*Delayed rendering*/
