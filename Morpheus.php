@@ -291,21 +291,43 @@ class Morpheus {
 	
 	function get_tags($str=NULL, $all=TRUE){
 		if($str === NULL && isset($this)){ $str = $this->_template; }
-		if(!($all === TRUE)){ $str = preg_replace('#^([^\n\r]+)(.*)$#', '\\1', $str); } /*check for tags in only the first line*/
+		$from = self::_select_part($str, $all);
 		$tags = array();
-		preg_match_all('#(^|\s)[\@]([a-z0-9_\:\.\/\-]+)([\(]([^\)]+)[\)])?(\s|$)#i', $str, $buffer);
+		preg_match_all('#(^|\s)[\@]([a-z0-9_\:\.\/\-]+)([\(]([^\)]+)[\)])?(\s|$)#i', $from, $buffer);
 		foreach($buffer[1] as $i=>$tag){
-			if(isset($tags[$tag])){
-				if(is_array($tags[$tag])){
-					$tags[$tag][] = $buffer[3][$i];
-				}
-				else{
-					$tags[$tag] = array($tags[$tag], $buffer[3][$i]);
-				}
+			$tags = self::assign_value($tags, $tag, $buffer[3][$i]);
+		}
+		return $tags;
+	}
+	function strip_tags($str=NULL, $all=TRUE){
+		if($str === NULL && isset($this)){ $str = $this->_template; }
+		$from = self::_select_part($str, $all);
+		$where = preg_replace('#(^|\s)[\@]([a-z0-9_\:\.\/\-]+)([\(]([^\)]+)[\)])?(\s|$)#i', '', $from);
+		$str = str_replace($from, $where, $str);
+		return $str;
+	}
+	/*private*/ function _select_part($str, $all=TRUE){
+		switch($all){
+			case FALSE: /*check for tags in only the first line*/
+				$from = preg_replace('#^([^\n\r]+)(.*)$#', '\\1', $str);
+				break;
+			case NULL: /*<morpheus>(.*)</morpheus>*/	break;
+			case TRUE: default:
+				$from = $str;
+		}
+		return $from;
+	}
+	/*private?*/ function assign_value(&$tags, $tag, $val=NULL){
+		if(isset($tags[$tag])){
+			if(is_array($tags[$tag])){
+				$tags[$tag][] = $val;
 			}
 			else{
-				$tags[$tag] = $buffer[3][$i];
+				$tags[$tag] = array($tags[$tag], $val);
 			}
+		}
+		else{
+			$tags[$tag] = $val;
 		}
 		return $tags;
 	}
