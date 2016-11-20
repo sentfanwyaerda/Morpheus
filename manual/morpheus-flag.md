@@ -19,11 +19,13 @@
 
 #### operators
 ```
-{:tag:flag}
-{:tag.class:flag}
+{<tag>flag}
+{<tag.class>flag}
+{<tag#id>flag}
+{<tag.class.other#id>flag}
 ```
 
-Is an alias for `<tag>{flag}<tag>`, with the option to also set its class.
+Is an alias for `<tag>{flag}<tag>`, with the option to also set its *class* and *id*.
 
 ```
 {*flag}
