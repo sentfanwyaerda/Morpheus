@@ -220,10 +220,128 @@ class Morpheus {
 	function mustache($template, $obj=array(), $prefix='{{{', $postfix='}}}'){
 		/*fix*/ if(isset($this) && ( is_array($template) || is_object($template) ) ){ $obj = $template; $template = $this->get_template(); }
 		
-		$str = $template; $arr = array();
+		$str = $template; $arr = self::get_obj_tags($obj);
+		
+		/*+ Partials {{> mustache}} */
+		if(preg_match_all("#".Morpheus::escape_preg_chars(substr($prefix, 0, 2))."([\>]\s?([^\|\?".Morpheus::escape_preg_chars($postfix)."]{0,}))([\|\?][^".Morpheus::escape_preg_chars($postfix)."]+)?".Morpheus::escape_preg_chars(substr($postfix, 0, 2))."#", $str, $buffer)){
+			foreach($buffer[1] as $i=>$partial){
+				$arr[$partial] = self::load_template($buffer[2][$i]);
+				if(isset($this)){ $this->_args[$partial] = $arr[$partial]; }
+			}
+		}
+		
+		/*+ Sections and inverted Sections: {{#mustache}} ... {{/mustache}} */
+		
+		if(strlen($prefix) >= 3 && strlen($postfix) >= 3){ $str = self::basic_parse_str($str, $arr, substr($prefix, 0, 3), substr($postfix, 0, 3), TRUE); }
+		$str = self::basic_parse_str($str, $arr, substr($prefix, 0, 2).'&', substr($postfix, 0, 2), TRUE);
+		$str = self::basic_parse_str($str, self::htmlspecialchars($arr), substr($prefix, 0, 2), substr($postfix, 0, 2), TRUE);
+	 	return $str;
+	}
+	public function /*recursive*/ htmlspecialchars($o){
+		if(is_array($o)){
+			foreach($o as $i=>$j){ $o[$i] = self::htmlspecialchars($j); }
+		} elseif(is_object($o)){
+			foreach(get_object_vars($o) as $key=>$value){ $o->$key = self::htmlspecialchars($value); }
+		} else { return htmlspecialchars($o); }
+		return $o;
+	}
+	
+	function _encapsule($str=NULL, $instruction=NULL, $ident=NULL, $src=FALSE){
+		if(!($ident === NULL) && strlen($instruction) == 0 ){ $instruction = 'div'; }
+		if(!(strlen($str) == 0) && preg_match("#^(([a-z0-9_-]+[\:])?[a-z0-9_-]+)(([\.][a-z0-9_-]+)*)([\#][a-z0-9_-]+)?$#i", $instruction, $buffer)){
+			list($all, $tag, $namespace, $class, $sub, $idref) = $buffer;
+			$str = '<'.$tag
+				.(strlen($ident) > 0 || strlen($idref) > 0 ? ' id="'.(strlen($idref) > 0 ? substr($idref, 1) : $ident).'"' : NULL)
+				.(strlen($class) > 0 ? ' class="'.str_replace('.', ' ', substr($class, 1)).'"' : NULL)
+				.(!($src === FALSE) ? ' contenteditable="true" data-src="'.$src.'"' : NULL)
+				.'>'.$str.'</'.$tag.'>';
+		}
+		return $str;
+	}
+	
+	function parse($str=NULL, $flags=array(), $recursive=FALSE, $src=FALSE){
+		if($str === NULL && isset($this->_template)){ $str = $this->_template; }
+		if($src === FALSE && isset($this->_src)){ $src = $this->_src; }
+		$out = $str;
+		$flags = array_merge(self::get_tags($out), self::get_obj_tags($flags) /*, $flags*/ );
+		$BLOCK = self::get_blocks($str);
+		foreach($BLOCK as $i=>$b){
+			/*RESET*/ $val = NULL;
+			if(isset($flags[$b['name']])){
+				/* set value override */ $val = $flags[$b['name']];
+			} else {
+				switch($b['name-prefix']){
+					case '> ': case '>':
+						$val = file_get_contents(self::get_file_uri($b['name-part']));
+						break;
+					case '%': //domain: Heracles
+						if(class_exists('Heracles') && method_exists('Heracles','load_record_flags')){
+							$h = Heracles::load_record_flags(Heracles::get_user_id());
+							$val = (isset($h[$b['name-part']]) ? $h[$b['name-part']] : $val);
+						}
+						break;
+					case '.': //domain Hades
+						if(class_exists('Hades') && method_exists('Hades','get_element_by_name')){ $val = Hades::get_element_by_name($b['name-part']); }
+						break;
+					default:
+						/* set value */ $val = NULL;
+				}
+			}
+			/* conditional */
+			switch(substr($b['conditional-full'], 0, 1)){
+				case '?':
+					$val = ((is_bool($val) ? $val == TRUE : !($val === NULL || preg_match('#^(false|no)$#i', $val))) ? $b['condition-positive'] : $b['condition-negative']);
+					break;
+				case '|':
+					if($val === NULL){ $val = $b['default-value']; }
+					break;
+				default: /*is not conditional*/
+			}
+			/* encapsule */ if($b['encapsule'] || preg_match('#^[\*]{1,2}$#', $b['aterisk'])){ $val = self::_encapsule($val, (isset($b['encapsule-tag']) ? $b['encapsule-tag'] : $b['encapsule-colon']), (preg_match('#^[\*]{1,2}$#', $b['aterisk']) ? $b['name-part'] : NULL), (!($src === FALSE) && preg_match('#^[\#]#', $b['aterisk']) ? $src : FALSE) ); }
+			/* aterisk (**) */ if(preg_match('#^[\*]{2}$#', $b['aterisk'])){ $val = '<a name="'.$b['name-part'].'"></a>'.$val; }
+			/* apply value */
+			$out = str_replace($b['match'], $val, $out);
+		}
+		return $out;
+	}
+
+	function get_blocks($str=NULL, $prefix='{', $postfix='}'){
+		$BLOCK = array();
+		$b = self::get_flags($str, $prefix, $postfix, array());
+		foreach($b[5] as $i=>$name){
+			$BLOCK[$i] = array('match'=>$b[0][$i], 'aterisk'=>$b[1][$i], 'encapsule'=>$b[2][$i], 'encapsule-colon'=>$b[3][$i], 'encapsule-tag'=>$b[4][$i], 'name'=>$b[5][$i], 'name-prefix'=>$b[6][$i], 'name-part'=>$b[7][$i], 'conditional-full'=>$b[8][$i], 'default-value'=>$b[9][$i], 'condition-positive'=>$b[10][$i], 'condition-negative'=>$b[11][$i]);
+			foreach($BLOCK[$i] as $n=>$v){ if(strlen($v) > 0){ $BLOCK[$i]['activated'][] = $n; } }
+		}
+		return $BLOCK;
+	}
+	function get_flags($str=NULL, $prefix='{', $postfix='}', $select=5){
+		if($str === NULL && isset($this)){ $str = $this->_template; }
+		preg_match_all('#'.Morpheus::escape_preg_chars($prefix).'([\*]{1,2}|[\#])?([\:]([^\:]+)[\:]|[\<]([^\>]+)[\>])?(([\.\%\@\!\~\\\\]|[>\&\/\^]\s?)?([a-z0-9_-]+))([\|]([^'.Morpheus::escape_preg_chars($postfix).']*)|[\?]([^\:]*)[\:]([^'.Morpheus::escape_preg_chars($postfix).']*))?'.Morpheus::escape_preg_chars($postfix).'#i', $str, $buffer);
+		return (is_array($select) || !isset($buffer[$select]) ? $buffer : array_unique($buffer[$select]));
+	}
+	
+	function get_tags($str=NULL, $all=TRUE){
+		if($str === NULL && isset($this)){ $str = $this->_template; }
+		$from = self::_select_part($str, $all);
+		$tags = array();
+		preg_match_all('#[\@]([a-z0-9_\:\.\/\-]+)([\(]([^\)]+)[\)])?(\s|$)#i', $from, $buffer);
+		foreach($buffer[1] as $i=>$tag){
+			$tags = self::assign_value($tags, $tag, $buffer[3][$i]);
+		}
+		return $tags;
+	}
+	function strip_tags($str=NULL, $all=TRUE){
+		if($str === NULL && isset($this)){ $str = $this->_template; }
+		$from = self::_select_part($str, $all);
+		$where = preg_replace('#[\@]([a-z0-9_\:\.\/\-]+)([\(]([^\)]+)[\)])?(\s|$)#i', '', $from);
+		$str = str_replace($from, $where, $str);
+		return $str;
+	}
+	function get_obj_tags($obj=FALSE){
+		$arr = array();
 		if(is_object($obj)){
 			$class = get_class($obj);
-			if(isset($this)){ $arr = array_merge($this->_args, $arr); }
+			if(isset($this) && isset($this->_args) && is_array($this->_args)){ $arr = array_merge($this->_args, $arr); }
 			if(isset($obj->_args)){ $arr = array_merge($obj->_args, $arr); }
 			foreach(get_object_vars($obj) as $key=>$value){
 				if(!preg_match('#^[_]#', $key)){ $arr[$key] = $value; }
@@ -256,55 +374,9 @@ class Morpheus {
 		}
 		elseif(is_array($obj)){
 			$arr = $obj;
-			if(isset($this)){ $arr = array_merge($this->_args, $arr); }
+			if(isset($this) && isset($this->_args) && is_array($this->_args)){ $arr = array_merge($this->_args, $arr); }
 		}
-		
-		/*+ Partials {{> mustache}} */
-		if(preg_match_all("#".Morpheus::escape_preg_chars(substr($prefix, 0, 2))."([\>]\s?([^\|\?".Morpheus::escape_preg_chars($postfix)."]{0,}))([\|\?][^".Morpheus::escape_preg_chars($postfix)."]+)?".Morpheus::escape_preg_chars(substr($postfix, 0, 2))."#", $str, $buffer)){
-			foreach($buffer[1] as $i=>$partial){
-				$arr[$partial] = self::load_template($buffer[2][$i]);
-				if(isset($this)){ $this->_args[$partial] = $arr[$partial]; }
-			}
-		}
-		
-		/*+ Sections and inverted Sections: {{#mustache}} ... {{/mustache}} */
-		
-		if(strlen($prefix) >= 3 && strlen($postfix) >= 3){ $str = self::basic_parse_str($str, $arr, substr($prefix, 0, 3), substr($postfix, 0, 3), TRUE); }
-		$str = self::basic_parse_str($str, $arr, substr($prefix, 0, 2).'&', substr($postfix, 0, 2), TRUE);
-		$str = self::basic_parse_str($str, self::htmlspecialchars($arr), substr($prefix, 0, 2), substr($postfix, 0, 2), TRUE);
-	 	return $str;
-	}
-	public function /*recursive*/ htmlspecialchars($o){
-		if(is_array($o)){
-			foreach($o as $i=>$j){ $o[$i] = self::htmlspecialchars($j); }
-		} elseif(is_object($o)){
-			foreach(get_object_vars($o) as $key=>$value){ $o->$key = self::htmlspecialchars($value); }
-		} else { return htmlspecialchars($o); }
-		return $o;
-	}
-
-	function get_flags($str=NULL, $prefix='{', $postfix='}', $select=5){
-		if($str === NULL && isset($this)){ $str = $this->_template; }
-		preg_match_all('#'.Morpheus::escape_preg_chars($prefix).'([\*]{1,2}|[\#])?([\:]([^\:]+)[\:]|[\<]([^\>]+)[\>])?(([\.\%\@\!\~\\\\]|[>\&\/\^]\s?)?([a-z0-9_-]+))([\|]([^'.Morpheus::escape_preg_chars($postfix).']*)|[\?]([^\:]*)[\:]([^'.Morpheus::escape_preg_chars($postfix).']*))?'.Morpheus::escape_preg_chars($postfix).'#i', $str, $buffer);
-		return (is_array($select) || !isset($buffer[$select]) ? $buffer : array_unique($buffer[$select]));
-	}
-	
-	function get_tags($str=NULL, $all=TRUE){
-		if($str === NULL && isset($this)){ $str = $this->_template; }
-		$from = self::_select_part($str, $all);
-		$tags = array();
-		preg_match_all('#(^|\s)[\@]([a-z0-9_\:\.\/\-]+)([\(]([^\)]+)[\)])?(\s|$)#i', $from, $buffer);
-		foreach($buffer[1] as $i=>$tag){
-			$tags = self::assign_value($tags, $tag, $buffer[3][$i]);
-		}
-		return $tags;
-	}
-	function strip_tags($str=NULL, $all=TRUE){
-		if($str === NULL && isset($this)){ $str = $this->_template; }
-		$from = self::_select_part($str, $all);
-		$where = preg_replace('#(^|\s)[\@]([a-z0-9_\:\.\/\-]+)([\(]([^\)]+)[\)])?(\s|$)#i', '', $from);
-		$str = str_replace($from, $where, $str);
-		return $str;
+		return $arr;
 	}
 	/*private*/ function _select_part($str, $all=TRUE){
 		switch($all){
@@ -318,6 +390,7 @@ class Morpheus {
 		return $from;
 	}
 	/*private?*/ function assign_value(&$tags, $tag, $val=NULL){
+		/*fix*/ if(!isset($tags) || !is_array($tags)){ $tags = array(); }
 		if(isset($tags[$tag])){
 			if(is_array($tags[$tag])){
 				$tags[$tag][] = $val;
@@ -368,7 +441,8 @@ class Morpheus {
 	function __toString(){
 		Morpheus::notify(__METHOD__);
 		if(isset($this) && isset($this->_template) ){
-			return $this->mustache($this->_template, $this);
+			return self::strip_tags(self::parse($this->_template, $this));
+			//return $this->mustache($this->_template, $this);
 		} else { return NULL; }
 	}
 }
