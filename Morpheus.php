@@ -181,9 +181,9 @@ class Morpheus {
 		}
 		return Morpheus::basic_parse_str($str, $flags, $prefix, $postfix, $parse);
 	}
-	public function escape_preg_chars($str, $qout=array(), $merge=FALSE){
+	public function escape_preg_chars($str, $qout=array(), $merge=TRUE){
 		if($merge !== FALSE){
-			$qout = array_merge(array('\\'), (is_array($qout) ? $qout : array($qout)), array('[',']','(',')','{','}','$','+','^','-'));
+			$qout = array_merge(array('\\'), (is_array($qout) ? $qout : array($qout)), array('[',']','(',')','{','}','$','+','^','-','*'));
 			#/*debug*/ print_r($qout);
 		}
 		if(is_array($qout)){
