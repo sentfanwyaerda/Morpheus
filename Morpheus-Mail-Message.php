@@ -12,7 +12,17 @@ class Mail_Message extends \Morpheus {
 	var $mailer;
 	function Mail_Message(){ $this->initialize(); }
 	function initialize(){
-		$this->mailer = new \PHPMailer;
+		if(!is_object($this->mailer)){
+			if(!defined('OAUTH')){ $this->mailer = new \PHPMailer; }
+			else{
+				$this->mailer = new \PHPMailerOAuth;
+				$this->mailer->AuthType = 'XOAUTH2';
+				if(defined('OAUTH_USER_EMAIL')){ $this->mailer->oauthUserEmail = OAUTH_USER_EMAIL; }
+				if(defined('OAUTH_CLIENT_ID')){ $this->mailer->oauthClientId = OAUTH_CLIENT_ID; }
+				if(defined('OAUTH_CLIENT_SECRET')){ $this->mailer->oauthClientSecret = OAUTH_CLIENT_SECRET; }
+				if(defined('OAUTH_REFRESH_TOKEN')){ $this->mailer->oauthRefreshToken = OAUTH_REFRESH_TOKEN; }
+			}
+		}
 		if(defined('SMTP_HOST')){
 			$this->mailer->isSMTP();
 			$this->mailer->Host = SMTP_HOST;
@@ -26,17 +36,38 @@ class Mail_Message extends \Morpheus {
 		}
 	}
 	
-	function to($email, $name=NULL){ $this->mailer->addAddress($email, $name); }
-	function cc($email, $name=NULL){ $this->mailer->addCC($email, $name); }
-	function bcc($email, $name=NULL){ $this->mailer->addBCC($email, $name); }
-	function reply_to($email, $name=NULL){ $this->mailer->addReplyTo($email, $name); }
-	function from($email, $name=NULL){ $this->mailer->setFrom($email, $name); }
+	function to($email, $name=NULL){
+		if(!is_object($this->mailer)){ $this->initialize(); }
+		$this->mailer->addAddress($email, $name);
+	}
+	function cc($email, $name=NULL){
+		if(!is_object($this->mailer)){ $this->initialize(); }
+		$this->mailer->addCC($email, $name);
+	}
+	function bcc($email, $name=NULL){
+		if(!is_object($this->mailer)){ $this->initialize(); }
+		$this->mailer->addBCC($email, $name);
+	}
+	function reply_to($email, $name=NULL){
+		if(!is_object($this->mailer)){ $this->initialize(); }
+		$this->mailer->addReplyTo($email, $name);
+	}
+	function from($email, $name=NULL){
+		if(!is_object($this->mailer)){ $this->initialize(); }
+		$this->mailer->setFrom($email, $name);
+	}
+	function attachment($src, $filename=NULL){
+		if(!is_object($this->mailer)){ $this->initialize(); }
+		$this->addAttachment($src, $filename);
+	}
 	function subject($subject=NULL){ $this->subject = $subject; }
 	
 	function send($debug=FALSE){
-		$this->mailer->Subject = $this->subject;
+		if(!is_object($this->mailer)){ $this->initialize(); }
+		$this->mailer->Subject = (string) $this->subject;
+		$this->mailer->isHTML(TRUE);
 		$this->mailer->Body = $this->__toString();
-		$this->mailer->AltBody = \Morpheus\Markdown::strip_all_html( $this->__toString() );
+		$this->mailer->AltBody = \Morpheus\Markdown::strip_all_html( $this->mailer->Body );
 		$res = $this->mailer->send();
 		return ($debug !== FALSE ? (!$res ? $this->mailer->ErrorInfo : TRUE) : $res);
 	}
