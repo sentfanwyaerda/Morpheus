@@ -65,7 +65,7 @@ class Morpheus {
 		//*debug*/ print '<!-- Morpheus::get_root '.preg_replace('#\s+#', ' ', print_r($sub, TRUE)).' -->'."\n";
 		if(class_exists("Hades") && defined('HADES') && isset(${HADES}) ){ return Hades::get_root($sub); }
 		/* add alias of the Heracles method */
-		return dirname(__FILE__).'/';
+		return (defined('MORPHEUS_ROOT') ? constant('MORPHEUS_ROOT') : dirname(__FILE__).'/' );
 	}
 	function get_file_uri($name, $sub=NULL, $ext=FALSE, $result_number=0, $with_prefix=TRUE){
 		//*debug*/ print '<!-- Morpheus::get_file_uri '.preg_replace('#\s+#', ' ', print_r($name, TRUE).' '.print_r($sub, TRUE).' '.print_r($ext, TRUE)).' -->'."\n";

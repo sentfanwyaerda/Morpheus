@@ -10,6 +10,7 @@ if(!class_exists('PHPMailer')){
 class Mail_Message extends \Morpheus {
 	var $subject = NULL;
 	var $mailer;
+	var $skin;
 	function Mail_Message(){ $this->initialize(); }
 	function initialize(){
 		if(!is_object($this->mailer)){
@@ -61,13 +62,17 @@ class Mail_Message extends \Morpheus {
 		$this->addAttachment($src, $filename);
 	}
 	function subject($subject=NULL){ $this->subject = $subject; }
+	function body($str=NULL){ $this->set_template($str); }
+	function set_skin($skin=NULL){ $this->skin = $skin; }
 	
 	function send($debug=FALSE){
 		if(!is_object($this->mailer)){ $this->initialize(); }
 		$this->mailer->Subject = (string) $this->subject;
 		$this->mailer->isHTML(TRUE);
-		$this->mailer->Body = $this->__toString();
-		$this->mailer->AltBody = \Morpheus\Markdown::strip_all_html( $this->mailer->Body );
+		$body = $this->__toString();
+		if(is_object($this->skin)){ $this->skin->CONTENT = $body; }
+		$this->mailer->Body = (is_object($this->skin) ? (string) $this->skin : $body );
+		$this->mailer->AltBody = \Morpheus\Markdown::strip_all_html( $body );
 		$res = $this->mailer->send();
 		return ($debug !== FALSE ? (!$res ? $this->mailer->ErrorInfo : TRUE) : $res);
 	}
