@@ -4,15 +4,17 @@ namespace Morpheus;
 require_once(dirname(__FILE__).'/Morpheus.php');
 
 class Markdown extends \Morpheus {
-	function Markdown($str=NULL){
-		$this->_template = $str;
+	function Markdown($a=NULL, $b=array(), $c=FALSE){
+		$this->_template = $a;
+		$this->_tag = $b;
 	}
 	
 	function _encode_order(){ return array_reverse(self::_decode_order()); }
 	function _decode_order(){ return array('clean','bold','italic','strikethrough', 'inline_code', 'syntax_highlighting', 'underline', 'link', 'headers','horizontal_rule', 'blockquote', 'lists', 'table', 'p_br','clean'); }
 	
 	/* Encode: HTML to Markdown*/
-	function encode($html=NULL){
+	function encode($html=FALSE){
+		if($html === FALSE && isset($this)){ $html = $this->_template; }
 		$md = $html;
 		foreach(self::_encode_order() as $i=>$el){
 			$cur = 'encode_'.strtolower($el);
@@ -22,7 +24,8 @@ class Markdown extends \Morpheus {
 	}
 	
 	/* Decode: Markdown to HTML */
-	function decode($md=NULL){
+	function decode($md=FALSE){
+		if($md === FALSE && isset($this)){ $md = $this->_template; }
 		$html = $md;
 		foreach(self::_decode_order() as $i=>$el){
 			$cur = 'decode_'.strtolower($el);

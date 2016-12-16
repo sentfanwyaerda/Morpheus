@@ -3,11 +3,11 @@ class Morpheus {
 	//private $_parsers = array();
 	private $_src = FALSE;
 	private $_domain = "text/plain";
-	private $_template = "";
-	private $_args = array();
+	private $_template = NULL;
+	private $_tag = array();
 	
 	function Morpheus($a=NULL, $b=array(), $c=FALSE){
-		if($b === array()){ $this->_args = array(); }
+		if(is_array($b)){ $this->_tag = $b; }
 		if(!($a === NULL) && is_string($a)){
 			if(preg_match("#[\.](".implode('|', Morpheus::get_file_extensions()).")$#", $a)){
 				$this->_src = $a;
@@ -18,7 +18,7 @@ class Morpheus {
 				$nam = $buf[1]; $other = new $nam(); $act = $buf[3];
 				if($other->validate_hades_elements($act)){
 					$this->_src = $a;
-					$other->$act($this->_args);
+					$other->$act($this->_tag);
 					$this->_template = $other;
 				} else { $this->_template = $a; }
 			} //*/
@@ -226,7 +226,7 @@ class Morpheus {
 		if(preg_match_all("#".Morpheus::escape_preg_chars(substr($prefix, 0, 2))."([\>]\s?([^\|\?".Morpheus::escape_preg_chars($postfix)."]{0,}))([\|\?][^".Morpheus::escape_preg_chars($postfix)."]+)?".Morpheus::escape_preg_chars(substr($postfix, 0, 2))."#", $str, $buffer)){
 			foreach($buffer[1] as $i=>$partial){
 				$arr[$partial] = self::load_template($buffer[2][$i]);
-				if(isset($this)){ $this->_args[$partial] = $arr[$partial]; }
+				if(isset($this)){ $this->_tag[$partial] = $arr[$partial]; }
 			}
 		}
 		
@@ -341,8 +341,8 @@ class Morpheus {
 		$arr = array();
 		if(is_object($obj)){
 			$class = get_class($obj);
-			if(isset($this) && isset($this->_args) && is_array($this->_args)){ $arr = array_merge($this->_args, $arr); }
-			if(isset($obj->_args)){ $arr = array_merge($obj->_args, $arr); }
+			if(isset($this) && isset($this->_tag) && is_array($this->_tag)){ $arr = array_merge($this->_tag, $arr); }
+			if(isset($obj->_tag)){ $arr = array_merge($obj->_tag, $arr); }
 			foreach(get_object_vars($obj) as $key=>$value){
 				if(!preg_match('#^[_]#', $key)){ $arr[$key] = $value; }
 			}
@@ -374,7 +374,7 @@ class Morpheus {
 		}
 		elseif(is_array($obj)){
 			$arr = $obj;
-			if(isset($this) && isset($this->_args) && is_array($this->_args)){ $arr = array_merge($this->_args, $arr); }
+			if(isset($this) && isset($this->_tag) && is_array($this->_tag)){ $arr = array_merge($this->_tag, $arr); }
 		}
 		return $arr;
 	}
