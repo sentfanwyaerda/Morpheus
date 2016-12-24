@@ -290,7 +290,7 @@ class Morpheus {
 			/* conditional */
 			switch(substr($b['conditional-full'], 0, 1)){
 				case '?':
-					$val = ((is_bool($val) ? $val == TRUE : !($val === NULL || preg_match('#^(false|no)$#i', $val))) ? $b['condition-positive'] : $b['condition-negative']);
+					$val = ((is_bool($val) ? $val == TRUE : !($val === NULL || preg_match('#^(false|no)$#i', $val) || $val == "")) ? $b['condition-positive'] : $b['condition-negative']);
 					break;
 				case '|':
 					if($val === NULL){ $val = $b['default-value']; }

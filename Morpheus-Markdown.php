@@ -78,6 +78,11 @@ class Markdown extends \Morpheus {
 		}
 		$str = preg_replace('#(^|\n)([^\n]+)\n[\=]{3,}\n#', '\\1<h1>\\2</h1>\n', $str);
 		$str = preg_replace('#(^|\n)([^\n]+)\n([\-]{3,}|\<hr\/\>)\n#', '\\1<h2>\\2</h2>\n', $str);
+		if(preg_match_all('#\<h([1-6])\>([^\<]+)\<\/h[1-6]\>#i', $str, $buffer) > 0){
+			foreach($buffer[2] as $a=>$h){
+				$str = str_replace($buffer[0][$a], '<h'.$buffer[1][$a].' id="H'.substr(md5($h), 0, 15).'">'.$h.'</h'.$buffer[1][$a].'>', $str);
+			}
+		}
 		return $str;
 	}
 	
@@ -236,15 +241,31 @@ class Markdown extends \Morpheus {
 		return $str;
 	}
 	function _decode_prefixed_line($str=NULL, $prefix=NULL, $tag=NULL, $group=NULL){
-		$lines = explode("\n", $str); $open = FALSE;
+		$lines = explode("\n", $str); $depth = 0;
 		foreach($lines as $i=>$line){
-			if(preg_match('#^(\s*)'.$prefix.'#', $line, $buffer)){
-				$lines[$i] = $buffer[1].(!($tag===NULL) ? '<'.$tag.'>' : NULL).str_replace($buffer[0], '', $line).(!($tag===NULL) ? '</'.$tag.'>' : NULL);
-				if(!($group===NULL) && $open===FALSE){ $lines[$i] = '<'.$group.'>'.$lines[$i]; $open = TRUE; }
+			if(preg_match('#^(\s*)'.$prefix.'(.*)(\s*)$#', $line, $buffer)){
+				/*fix*/ $b1 = str_replace(str_repeat(' ', 3), "\t", $buffer[1]);
+				$nl = (!($tag===NULL) ? '<'.$tag.' depth="'.$depth.'" b="'.(strlen($b1)+1).'">' : $buffer[1]).$buffer[2].(!($tag===NULL) ? '</'.$tag.'>' : NULL).$buffer[3];
+				if((strlen($b1)+1) != $depth){
+					if((strlen($b1)+1) > $depth){
+						$lines[$i] = preg_replace('#^(\s*)(.*)$#', '\\1'.str_repeat('<'.$group.' depth="'.$depth.'" b="'.(strlen($b1)+1).'">', ( (strlen($b1)+1) - $depth ) ).'\\2', $nl);
+					}
+					else{
+						$lines[$i-1] = preg_replace('#$(.*)(\s*)$#', '\\1'.str_repeat('</'.$group.'>', ( $depth - (strlen($b1)+1) ) ).'\\2', $lines[$i-1]);
+						$lines[$i] = $nl;
+					}
+					$depth = (strlen($b1) + 1);
+				}
+				else{
+					$lines[$i] = $nl;
+				}
 			}
-			else { if(!($group===NULL) && !($open===FALSE)){ $lines[$i-1] = $lines[$i-1].'</'.$group.'>'; $open = FALSE; } }
+			else{
+				$lines[$i-1] = preg_replace('#^(.*)(\s*)$#', '\\1'.str_repeat('</'.$group.'>', ($depth - $spacer)).'\\2', $lines[$i-1]);
+				$depth = 0;
+			}
 		}
-		/*fix last line*/ if(!($group===NULL) && !($open===FALSE)){ $lines[$i] = $lines[$i].'</'.$group.'>'; $open = FALSE; }
+		/*fix last line*/ if(!($group===NULL) && $depth > 0){ $lines[$i] = preg_replace('#^(.*)(\s*)$#', '\\1'.str_repeat('</'.$group.'>', $depth).'\\2', $lines[$i]); }
 		$str = implode("\n", $lines);
 		return $str;
 	}
@@ -256,7 +277,33 @@ class Markdown extends \Morpheus {
 	function encode_clean($str=NULL){ return str_replace(array('�',"\r",'¤'), array('','',''), $str); }
 	
 	/*OTHER*/
-	function TOC($str=NULL){
+	function str(){ return $this->get_template(); }
+	function TOC($str=NULL){ //$str=NULL
+		$toc = NULL; $depth = 0; $spacer = 0;
+		//$toc = 'TABLE OF CONTENTS';
+		//print_r($this);
+		//if($str === NULL && isset($this)){
+			$str = $this->get_template();
+			$str = $this->decode_headers($str);
+		//} else { $str = '<h5>error</h5>'; }
+		//$toc .= ' ('.strlen($str).')';
+		if(preg_match_all('#<h([1-6])( id="([^"]+)")?>([^<]+)</h[1-6]>#i', $str, $buffer) > 0){
+			//$toc .= '<br/>opties: <br/>';
+			foreach($buffer[4] as $a=>$h){
+				if($depth == 0){ $spacer = $depth = ($buffer[1][$a] - 1); }
+				if($buffer[1][$a] != $depth){
+					if($buffer[1][$a] > $depth){
+						$toc .= str_repeat('<ul>', ( $buffer[1][$a] - $depth ) );
+					}
+					else{
+						$toc .= str_repeat('</ul>', ( $depth - $buffer[1][$a] ) );
+					}
+					$depth = $buffer[1][$a];
+				}
+				$toc .= '<li><a href="#'.$buffer[3][$a].'" onclick="ganaar(\''.$buffer[3][$a].'\', \'none\', 80);">'.$h.'</a></li>';
+			}
+			if($depth != 0){ $toc .= str_repeat('</ul>', ($depth - $spacer) ); }
+		}
 		return $toc;
 	}
 }
