@@ -230,7 +230,7 @@ class Markdown extends \Morpheus {
 		if(!is_array($options) || count($options) == 0){ $options = array($tag); }
 		foreach($options as $i=>$t){
 			$str = str_replace('</'.$t.'>', '¤', $str);
-			$str = preg_replace('#\<'.$t.'\>([^¤]*)[¤]#', $prefix.'\\1'.$postfix, $str);
+			$str = preg_replace('#\<'.$t.'\>([^¤'.($newline == FALSE ? '\r\n' : NULL).']*)[¤]#', $prefix.'\\1'.$postfix, $str);
 			$str = str_replace('¤', '</'.$t.'>', $str);
 		}
 		return $str;
