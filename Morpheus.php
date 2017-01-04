@@ -287,21 +287,40 @@ class Morpheus {
 						/* set value */ $val = NULL;
 				}
 			}
+			/*logging*/ $BLOCK[$i]['input'] = $val;
 			/* conditional */
-			switch(substr($b['conditional-full'], 0, 1)){
-				case '?':
-					$val = ((is_bool($val) ? $val == TRUE : !($val === NULL || preg_match('#^(false|no)$#i', $val) || $val == "")) ? $b['condition-positive'] : $b['condition-negative']);
-					break;
-				case '|':
-					if($val === NULL){ $val = $b['default-value']; }
-					break;
-				default: /*is not conditional*/
+			if(in_array('conditional-full', $b['activated'])){
+				switch(substr($b['conditional-full'], 0, 1)){
+					case '|':
+						if($val === NULL){ $val = $b['default-value']; }
+						break;
+					case '?': default:
+						if(in_array('condition-match-operator', $b['activated'])){
+							//*debug*/ print print_r($val, TRUE).' '.$b['condition-match-operator'].' '.$b['condition-match-to'];
+							switch($b['condition-match-operator']){
+								case '=': case '==': $val = ($val == $b['condition-match-to'] ? TRUE : FALSE); break;
+								case '!=': case '<>': $val = ($val !== $b['condition-match-to'] ? TRUE : FALSE); break;
+								case '<': $val = ((int) $val < $b['condition-match-to'] ? TRUE : FALSE); break;
+								case '<=': $val = ($val <= $b['condition-match-to'] ? TRUE : FALSE); break;
+								case '>': $val = ($val > $b['condition-match-to'] ? TRUE : FALSE); break;
+								case '>=': $val = ($val >= $b['condition-match-to'] ? TRUE : FALSE); break;
+								case '^=': $val = (preg_match('#^'.Morpheus::escape_preg_chars($b['condition-match-to']).'#', $val) ? TRUE : FALSE); break;
+								case '$=': $val = (preg_match('#'.Morpheus::escape_preg_chars($b['condition-match-to']).'$#', $val) ? TRUE : FALSE); break;
+								default:
+							}
+							//*debug*/ print ' := '.print_r($val, TRUE)."\n";
+						}
+						$val = ((is_bool($val) ? $val == TRUE : !($val === NULL || preg_match('#^(false|no)$#i', $val) || $val == "")) ? $b['condition-positive'] : $b['condition-negative']);
+						//break;
+				}
 			}
 			/* encapsule */ if($b['encapsule'] || preg_match('#^[\*]{1,2}$#', $b['aterisk'])){ $val = self::_encapsule($val, (isset($b['encapsule-tag']) ? $b['encapsule-tag'] : $b['encapsule-colon']), (preg_match('#^[\*]{1,2}$#', $b['aterisk']) ? $b['name-part'] : NULL), (!($src === FALSE) && preg_match('#^[\#]#', $b['aterisk']) ? $src : FALSE) ); }
 			/* aterisk (**) */ if(preg_match('#^[\*]{2}$#', $b['aterisk'])){ $val = '<a name="'.$b['name-part'].'"></a>'.$val; }
+			/*logging*/ $BLOCK[$i]['result'] = $val;
 			/* apply value */
 			$out = str_replace($b['match'], $val, $out);
 		}
+		//*debug*/ print_r($BLOCK);
 		return $out;
 	}
 
@@ -309,14 +328,14 @@ class Morpheus {
 		$BLOCK = array();
 		$b = self::get_flags($str, $prefix, $postfix, array());
 		foreach($b[5] as $i=>$name){
-			$BLOCK[$i] = array('match'=>$b[0][$i], 'aterisk'=>$b[1][$i], 'encapsule'=>$b[2][$i], 'encapsule-colon'=>$b[3][$i], 'encapsule-tag'=>$b[4][$i], 'name'=>$b[5][$i], 'name-prefix'=>$b[6][$i], 'name-part'=>$b[7][$i], 'conditional-full'=>$b[8][$i], 'default-value'=>$b[9][$i], 'condition-positive'=>$b[10][$i], 'condition-negative'=>$b[11][$i]);
+			$BLOCK[$i] = array('match'=>$b[0][$i], 'aterisk'=>$b[1][$i], 'encapsule'=>$b[2][$i], 'encapsule-colon'=>$b[3][$i], 'encapsule-tag'=>$b[4][$i], 'name'=>$b[5][$i], 'name-prefix'=>$b[6][$i], 'name-part'=>$b[7][$i], 'conditional-full'=>$b[8][$i], 'default-value'=>$b[9][$i], 'condition-match-full'=>$b[10][$i], 'condition-match-operator'=>$b[11][$i], 'condition-match-to'=>$b[12][$i], 'condition-positive'=>$b[13][$i], 'condition-negative'=>$b[14][$i]);
 			foreach($BLOCK[$i] as $n=>$v){ if(strlen($v) > 0){ $BLOCK[$i]['activated'][] = $n; } }
 		}
 		return $BLOCK;
 	}
 	function get_flags($str=NULL, $prefix='{', $postfix='}', $select=5){
 		if($str === NULL && isset($this)){ $str = $this->_template; }
-		preg_match_all('#'.Morpheus::escape_preg_chars($prefix).'([\*]{1,2}|[\#])?([\:]([^\:]+)[\:]|[\<]([^\>]+)[\>])?(([\.\%\@\!\~\\\\]|[>\&\/\^]\s?)?([a-z0-9_-]+))([\|]([^'.Morpheus::escape_preg_chars($postfix).']*)|[\?]([^\:]*)[\:]([^'.Morpheus::escape_preg_chars($postfix).']*))?'.Morpheus::escape_preg_chars($postfix).'#i', $str, $buffer);
+		preg_match_all('#'.Morpheus::escape_preg_chars($prefix).'([\*]{1,2}|[\#])?([\:]([^\:]+)[\:]|[\<]([^\>]+)[\>])?(([\.\%\@\!\~\\\\]|[>\&\/\^]\s?)?([a-z0-9_-]+))([\|]([^'.Morpheus::escape_preg_chars($postfix).']*)|(([\!\=\^\$]?[\=]|[\<\>][\=]?|\<\>)([^\?]+))?[\?]([^\:]*)[\:]([^'.Morpheus::escape_preg_chars($postfix).']*))?'.Morpheus::escape_preg_chars($postfix).'#i', $str, $buffer);
 		return (is_array($select) || !isset($buffer[$select]) ? $buffer : array_unique($buffer[$select]));
 	}
 	
