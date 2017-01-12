@@ -10,7 +10,7 @@ class Markdown extends \Morpheus {
 	}
 	
 	function _encode_order(){ return array_reverse(self::_decode_order()); }
-	function _decode_order(){ return array('clean','bold','italic','strikethrough', 'inline_code', 'syntax_highlighting', 'underline', 'link', 'headers','horizontal_rule', 'blockquote', 'lists', 'task_done', 'table', 'p_br','clean'); }
+	function _decode_order(){ return array('clean','bold','italic','strikethrough', 'inline_code', 'syntax_highlighting', /*'underline',*/ 'link', 'headers','horizontal_rule', 'blockquote', 'lists', 'task_done', 'table', 'p_br','clean'); }
 	
 	/* Encode: HTML to Markdown*/
 	function encode($html=FALSE){

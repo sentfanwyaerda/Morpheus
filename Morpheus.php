@@ -264,6 +264,7 @@ class Morpheus {
 		if($src === FALSE && isset($this->_src)){ $src = $this->_src; }
 		$out = $str;
 		$flags = array_merge(self::get_tags($out), self::get_obj_tags($flags) /*, $flags*/ );
+		/*fix*/ $flags = self::array_flat($flags);
 		$BLOCK = self::get_blocks($str);
 		foreach($BLOCK as $i=>$b){
 			/*RESET*/ $val = NULL;
@@ -328,14 +329,14 @@ class Morpheus {
 		$BLOCK = array();
 		$b = self::get_flags($str, $prefix, $postfix, array());
 		foreach($b[5] as $i=>$name){
-			$BLOCK[$i] = array('match'=>$b[0][$i], 'aterisk'=>$b[1][$i], 'encapsule'=>$b[2][$i], 'encapsule-colon'=>$b[3][$i], 'encapsule-tag'=>$b[4][$i], 'name'=>$b[5][$i], 'name-prefix'=>$b[6][$i], 'name-part'=>$b[7][$i], 'conditional-full'=>$b[8][$i], 'default-value'=>$b[9][$i], 'condition-match-full'=>$b[10][$i], 'condition-match-operator'=>$b[11][$i], 'condition-match-to'=>$b[12][$i], 'condition-positive'=>$b[13][$i], 'condition-negative'=>$b[14][$i]);
+			$BLOCK[$i] = array('match'=>$b[0][$i], 'aterisk'=>$b[1][$i], 'encapsule'=>$b[2][$i], 'encapsule-colon'=>$b[3][$i], 'encapsule-tag'=>$b[4][$i], 'name'=>$b[5][$i], 'name-prefix'=>$b[6][$i], 'name-part'=>$b[7][$i], 'conditional-full'=>$b[9][$i], 'default-value'=>$b[10][$i], 'condition-match-full'=>$b[11][$i], 'condition-match-operator'=>$b[12][$i], 'condition-match-to'=>$b[13][$i], 'condition-positive'=>$b[14][$i], 'condition-negative'=>$b[15][$i]);
 			foreach($BLOCK[$i] as $n=>$v){ if(strlen($v) > 0){ $BLOCK[$i]['activated'][] = $n; } }
 		}
 		return $BLOCK;
 	}
 	function get_flags($str=NULL, $prefix='{', $postfix='}', $select=5){
 		if($str === NULL && isset($this)){ $str = $this->_template; }
-		preg_match_all('#'.Morpheus::escape_preg_chars($prefix).'([\*]{1,2}|[\#])?([\:]([^\:]+)[\:]|[\<]([^\>]+)[\>])?(([\.\%\@\!\~\\\\]|[>\&\/\^]\s?)?([a-z0-9_-]+))([\|]([^'.Morpheus::escape_preg_chars($postfix).']*)|(([\!\=\^\$]?[\=]|[\<\>][\=]?|\<\>)([^\?]+))?[\?]([^\:]*)[\:]([^'.Morpheus::escape_preg_chars($postfix).']*))?'.Morpheus::escape_preg_chars($postfix).'#i', $str, $buffer);
+		preg_match_all('#'.Morpheus::escape_preg_chars($prefix).'([\*]{1,2}|[\#])?([\:]([^\:]+)[\:]|[\<]([^\>]+)[\>])?(([\.\%\@\!\~\\\\]|[>\&\/\^]\s?)?([a-z0-9_-]+([\[][a-z0-9_-]+[\]])*))([\|]([^'.Morpheus::escape_preg_chars($postfix).']*)|(([\!\=\^\$]?[\=]|[\<\>][\=]?|\<\>)([^\?]+))?[\?]([^\:]*)[\:]([^'.Morpheus::escape_preg_chars($postfix).']*))?'.Morpheus::escape_preg_chars($postfix).'#i', $str, $buffer);
 		return (is_array($select) || !isset($buffer[$select]) ? $buffer : array_unique($buffer[$select]));
 	}
 	
@@ -455,7 +456,20 @@ class Morpheus {
 		 /*in order of importance*/ 
 		return array('m','template','morph','morpheus','mustache','md','markdown','json','html','txt','taskpaper');
 	}
-	
+	public function array_flat($arr=array(), $prefix=NULL){
+		$set = array();
+		if(is_array($arr)){foreach($arr as $key=>$value){
+			$call = ($prefix === NULL ? $key : $prefix.'['.$key.']');
+			if(is_array($value)){
+				//foreach($value as $k=>$v){ $set = array_merge($set, self::array_flat($value, $call.'['.$k.']')); }
+				$set = array_merge($set, self::array_flat($value, $call));
+			}
+			if(!(is_object($value) && !method_exists($value, '__toString'))){
+				$set[$call] = (is_array($value) ? json_encode($value) : (string) $value);
+			}
+		}} else { $set = $arr; }
+		return $set;
+	}
 	
 	function __toString(){
 		Morpheus::notify(__METHOD__);
