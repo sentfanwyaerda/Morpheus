@@ -259,69 +259,87 @@ class Morpheus {
 		return $str;
 	}
 	
-	function parse($str=NULL, $flags=array(), $recursive=FALSE, $src=FALSE){
+	function parse($str=NULL, $flags=array(), $recursive=FALSE, $src=FALSE, $htmlencode=FALSE){
 		if($str === NULL && isset($this->_template)){ $str = $this->_template; }
 		if($src === FALSE && isset($this->_src)){ $src = $this->_src; }
 		$out = $str;
+		/*reset memory*/ $internal_htmlencode = $htmlencode;
 		$flags = array_merge(self::get_tags($out), self::get_obj_tags($flags) /*, $flags*/ );
 		/*fix*/ $flags = self::array_flat($flags);
-		$BLOCK = self::get_blocks($str);
-		foreach($BLOCK as $i=>$b){
-			/*RESET*/ $val = NULL;
-			if(isset($flags[$b['name']])){
-				/* set value override */ $val = $flags[$b['name']];
-			} else {
-				switch($b['name-prefix']){
-					case '> ': case '>':
-						$val = file_get_contents(self::get_file_uri($b['name-part']));
-						break;
-					case '%': //domain: Heracles
-						if(class_exists('Heracles') && method_exists('Heracles','load_record_flags')){
-							$h = Heracles::load_record_flags(Heracles::get_user_id());
-							$val = (isset($h[$b['name-part']]) ? $h[$b['name-part']] : $val);
-						}
-						break;
-					case '.': //domain Hades
-						if(class_exists('Hades') && method_exists('Hades','get_element_by_name')){ $val = Hades::get_element_by_name($b['name-part']); }
-						break;
-					default:
-						/* set value */ $val = NULL;
-				}
-			}
-			/*logging*/ $BLOCK[$i]['input'] = $val;
-			/* conditional */
-			if(in_array('conditional-full', $b['activated'])){
-				switch(substr($b['conditional-full'], 0, 1)){
-					case '|':
-						if($val === NULL){ $val = $b['default-value']; }
-						break;
-					case '?': default:
-						if(in_array('condition-match-operator', $b['activated'])){
-							//*debug*/ print print_r($val, TRUE).' '.$b['condition-match-operator'].' '.$b['condition-match-to'];
-							switch($b['condition-match-operator']){
-								case '=': case '==': $val = ($val == $b['condition-match-to'] ? TRUE : FALSE); break;
-								case '!=': case '<>': $val = ($val !== $b['condition-match-to'] ? TRUE : FALSE); break;
-								case '<': $val = ((int) $val < $b['condition-match-to'] ? TRUE : FALSE); break;
-								case '<=': $val = ($val <= $b['condition-match-to'] ? TRUE : FALSE); break;
-								case '>': $val = ($val > $b['condition-match-to'] ? TRUE : FALSE); break;
-								case '>=': $val = ($val >= $b['condition-match-to'] ? TRUE : FALSE); break;
-								case '^=': $val = (preg_match('#^'.Morpheus::escape_preg_chars($b['condition-match-to']).'#', $val) ? TRUE : FALSE); break;
-								case '$=': $val = (preg_match('#'.Morpheus::escape_preg_chars($b['condition-match-to']).'$#', $val) ? TRUE : FALSE); break;
-								default:
+		$mo = json_decode('[{"prefix":"{{{","postfix":"}}}","htmlencode":false},{"prefix":"{{","postfix":"}}","htmlencode":true},{"prefix":"{","postfix":"}","htmlencode":false}]', TRUE);
+		for($mu=0;$mu<3;$mu++){
+			$BLOCK = self::get_blocks($str, $mo[$mu]['prefix'], $mo[$mu]['postfix']);
+			$htmlencode = ( isset($mo[$mu]['htmlencode']) && $mo[$mu]['htmlencode'] === TRUE );
+			foreach($BLOCK as $i=>$b){
+				/*RESET*/ $val = NULL;
+				if(isset($flags[$b['name']])){
+					switch($b['name-prefix']){
+						case '&': //Mustache htmlencodes on double `{{` by default. & disables the htmlencoding
+							$htmlencode = FALSE;
+							$val = $flags[$b['name']];
+							break;
+						default:
+					/* set value override */ $val = $flags[$b['name']];
+					}
+				} else {
+					switch($b['name-prefix']){
+						case '> ': case '>':
+							$val = file_get_contents(self::get_file_uri($b['name-part']));
+							break;
+						case '%': //domain: Heracles
+							if(class_exists('Heracles') && method_exists('Heracles','load_record_flags')){
+								$h = Heracles::load_record_flags(Heracles::get_user_id());
+								$val = (isset($h[$b['name-part']]) ? $h[$b['name-part']] : $val);
 							}
-							//*debug*/ print ' := '.print_r($val, TRUE)."\n";
-						}
-						$val = ((is_bool($val) ? $val == TRUE : !($val === NULL || preg_match('#^(false|no)$#i', $val) || $val == "")) ? $b['condition-positive'] : $b['condition-negative']);
-						//break;
+							break;
+						case '.': //domain Hades
+							if(class_exists('Hades') && method_exists('Hades','get_element_by_name')){ $val = Hades::get_element_by_name($b['name-part']); }
+							break;
+						default:
+							/* set value */ $val = NULL;
+					}
 				}
+				/*logging*/ $BLOCK[$i]['input'] = $val;
+				/* conditional */
+				if(in_array('conditional-full', $b['activated'])){
+					switch(substr($b['conditional-full'], 0, 1)){
+						case '|':
+							if($val === NULL){ $val = $b['default-value']; }
+							break;
+						case '?': default:
+							if(in_array('condition-match-operator', $b['activated'])){
+								//*debug*/ print print_r($val, TRUE).' '.$b['condition-match-operator'].' '.$b['condition-match-to'];
+								switch($b['condition-match-operator']){
+									case '=': case '==': $val = ($val == $b['condition-match-to'] ? TRUE : FALSE); break;
+									case '!=': case '<>': $val = ($val !== $b['condition-match-to'] ? TRUE : FALSE); break;
+									case '<': $val = ((int) $val < $b['condition-match-to'] ? TRUE : FALSE); break;
+									case '<=': $val = ($val <= $b['condition-match-to'] ? TRUE : FALSE); break;
+									case '>': $val = ($val > $b['condition-match-to'] ? TRUE : FALSE); break;
+									case '>=': $val = ($val >= $b['condition-match-to'] ? TRUE : FALSE); break;
+									case '^=': $val = (preg_match('#^'.Morpheus::escape_preg_chars($b['condition-match-to']).'#', $val) ? TRUE : FALSE); break;
+									case '$=': $val = (preg_match('#'.Morpheus::escape_preg_chars($b['condition-match-to']).'$#', $val) ? TRUE : FALSE); break;
+									case '*=': $val = (preg_match('#'.Morpheus::escape_preg_chars($b['condition-match-to']).'#', $val) ? TRUE : FALSE); break;
+									case ':=': case '=:': case '::': case ':!=': case '=!:': case ':!:': /*yet to implement: in_array / intersection & negatives*/ break;
+									case '<=>': /*spaceship*/ break;
+									default:
+								}
+								//*debug*/ print ' := '.print_r($val, TRUE)."\n";
+							}
+							$val = ((is_bool($val) ? $val == TRUE : !($val === NULL || preg_match('#^(false|no)$#i', $val) || $val == "")) ? $b['condition-positive'] : $b['condition-negative']);
+							//break;
+					}
+				}
+				/* encapsule */ if($b['encapsule'] || preg_match('#^[\*]{1,2}$#', $b['aterisk'])){ $val = self::_encapsule($val, (isset($b['encapsule-tag']) ? $b['encapsule-tag'] : $b['encapsule-colon']), (preg_match('#^[\*]{1,2}$#', $b['aterisk']) ? $b['name-part'] : NULL), (!($src === FALSE) && preg_match('#^[\#]#', $b['aterisk']) ? $src : FALSE) ); }
+				/* aterisk (**) */ if(preg_match('#^[\*]{2}$#', $b['aterisk'])){ $val = '<a name="'.$b['name-part'].'"></a>'.$val; }
+				/*logging*/ $BLOCK[$i]['result'] = $val;
+				/* apply value */
+				$out = str_replace($b['match'], $val, $out);
+
+				/*reset*/ $htmlencode = $internal_htmlencode;
 			}
-			/* encapsule */ if($b['encapsule'] || preg_match('#^[\*]{1,2}$#', $b['aterisk'])){ $val = self::_encapsule($val, (isset($b['encapsule-tag']) ? $b['encapsule-tag'] : $b['encapsule-colon']), (preg_match('#^[\*]{1,2}$#', $b['aterisk']) ? $b['name-part'] : NULL), (!($src === FALSE) && preg_match('#^[\#]#', $b['aterisk']) ? $src : FALSE) ); }
-			/* aterisk (**) */ if(preg_match('#^[\*]{2}$#', $b['aterisk'])){ $val = '<a name="'.$b['name-part'].'"></a>'.$val; }
-			/*logging*/ $BLOCK[$i]['result'] = $val;
-			/* apply value */
-			$out = str_replace($b['match'], $val, $out);
 		}
 		//*debug*/ print_r($BLOCK);
+		if(!($htmlencode===FALSE)){ $out = htmlencode($out); }
 		return $out;
 	}
 
@@ -329,14 +347,14 @@ class Morpheus {
 		$BLOCK = array();
 		$b = self::get_flags($str, $prefix, $postfix, array());
 		foreach($b[5] as $i=>$name){
-			$BLOCK[$i] = array('match'=>$b[0][$i], 'aterisk'=>$b[1][$i], 'encapsule'=>$b[2][$i], 'encapsule-colon'=>$b[3][$i], 'encapsule-tag'=>$b[4][$i], 'name'=>$b[5][$i], 'name-prefix'=>$b[6][$i], 'name-part'=>$b[7][$i], 'conditional-full'=>$b[9][$i], 'default-value'=>$b[10][$i], 'condition-match-full'=>$b[11][$i], 'condition-match-operator'=>$b[12][$i], 'condition-match-to'=>$b[13][$i], 'condition-positive'=>$b[14][$i], 'condition-negative'=>$b[15][$i]);
+			$BLOCK[$i] = array('match'=>$b[0][$i], 'aterisk'=>$b[1][$i], 'encapsule'=>$b[2][$i], 'encapsule-colon'=>$b[3][$i], 'encapsule-tag'=>$b[4][$i], 'name'=>$b[5][$i], 'name-prefix'=>$b[6][$i], 'name-part'=>$b[7][$i], 'conditional-full'=>$b[10][$i], 'default-value'=>$b[11][$i], 'condition-match-full'=>$b[12][$i], 'condition-match-operator'=>$b[13][$i], 'condition-match-to'=>$b[14][$i], 'condition-positive'=>$b[15][$i], 'condition-negative'=>$b[16][$i]);
 			foreach($BLOCK[$i] as $n=>$v){ if(strlen($v) > 0){ $BLOCK[$i]['activated'][] = $n; } }
 		}
 		return $BLOCK;
 	}
 	function get_flags($str=NULL, $prefix='{', $postfix='}', $select=5){
 		if($str === NULL && isset($this)){ $str = $this->_template; }
-		preg_match_all('#'.Morpheus::escape_preg_chars($prefix).'([\*]{1,2}|[\#])?([\:]([^\:]+)[\:]|[\<]([^\>]+)[\>])?(([\.\%\@\!\~\\\\]|[>\&\/\^]\s?)?([a-z0-9_-]+([\[][a-z0-9_-]+[\]])*))([\|]([^'.Morpheus::escape_preg_chars($postfix).']*)|(([\!\=\^\$]?[\=]|[\<\>][\=]?|\<\>)([^\?]+))?[\?]([^\:]*)[\:]([^'.Morpheus::escape_preg_chars($postfix).']*))?'.Morpheus::escape_preg_chars($postfix).'#i', $str, $buffer);
+		preg_match_all('#'.Morpheus::escape_preg_chars($prefix).'([\*]{1,2}|[\#])?([\:]([^\:]+)[\:]|[\<]([^\>]+)[\>])?(([\.\%\@\!\~\\\\]|[>\&\/\^]\s?)?([a-z0-9_-]+([\[][a-z0-9_-]+[\]])*(\.length|\.toupper|\.tolower|\.ucfirst|\.typeof|\.class)?))([\|]([^'.Morpheus::escape_preg_chars($postfix).']*)|(([\!\=\^\$]?[\=]|[\<\>][\=]?|\<\>)([^\?]+))?[\?]([^\:]*)[\:]([^'.Morpheus::escape_preg_chars($postfix).']*))?'.Morpheus::escape_preg_chars($postfix).'#i', $str, $buffer);
 		return (is_array($select) || !isset($buffer[$select]) ? $buffer : array_unique($buffer[$select]));
 	}
 	
@@ -460,13 +478,20 @@ class Morpheus {
 		$set = array();
 		if(is_array($arr)){foreach($arr as $key=>$value){
 			$call = ($prefix === NULL ? $key : $prefix.'['.$key.']');
+			$set[$call.'.typeof'] = gettype($value);
 			if(is_array($value)){
 				//foreach($value as $k=>$v){ $set = array_merge($set, self::array_flat($value, $call.'['.$k.']')); }
-				$set = array_merge($set, self::array_flat($value, $call));
+				$set = array_merge($set, self::array_flat($value, $call), array($call.'.length' => count($value)) );
 			}
+			if(is_object($value)){ $set[$call.'.class'] = get_class($value); }
+			//if(is_int($value)){ $set[$call.'.hex'] = dechex($value); $set[$call.'.dec'] = $value; $set[$call.'.oct'] = decoct($value); }
 			if(!(is_object($value) && !method_exists($value, '__toString'))){
 				$set[$call] = (is_array($value) ? json_encode($value) : (string) $value);
+				$set[$call.'.toupper'] = strtoupper($set[$call]);
+				$set[$call.'.tolower'] = strtolower($set[$call]);
+				$set[$call.'.ucfirst'] = ucfirst($set[$call]);
 			}
+			if(!isset($set[$call.'.length'])){ $set[$call.'.length'] = strlen($set[$call]); }
 		}} else { $set = $arr; }
 		return $set;
 	}
