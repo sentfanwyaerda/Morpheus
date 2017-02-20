@@ -119,20 +119,20 @@ class Markdown extends \Morpheus {
 	
 	function encode_table($str=NULL){ return $str; }
 	function decode_table($str=NULL){
-		$tnr = $hdr = array();
+		$tnr = $tstr = $hdr = array();
 		$lines = explode("\n", $str);
 		foreach($lines as $i=>$line){
-			if(preg_match_all('#(^|\s|[\-\:])[\|]{1,}(\s|[\-\:]|$)#', $line) >= 2){
-				$tnr[] = $i;
+			if(preg_match_all('#(^|\s|[\-\:])[\|]{1,}(\s|[\-\:]|$)#', $line, $buffer) >= 2){
+				$tnr[] = $i; $tstr[$i] = $buffer[0];
 				if(preg_match('#^\s*[\|]?\s?[:]?[\-]{3,}[\:]?\s?([\|]\s?[:]?[\-]{3,}[\:]?\s?)*[\|]?\s*$#', $line)){
 					$hdr[$i] = $line;
 				}
 			}
 		}
-		//*debug*/ print '<!-- tnr='.print_r($tnr, TRUE).' hdr='.print_r($hdr, TRUE).' -->';
+		//*debug*/ print '<!-- tnr='.print_r($tnr, TRUE).' tstr='.print_r($tstr, TRUE).' hdr='.print_r($hdr, TRUE).' -->';
 		foreach($lines as $i=>$line){
 			if(in_array($i, $tnr) && !isset($hdr[$i])){
-				$lines[$i] = (!in_array($i-1, $tnr) ? '<table>' : NULL).'<tr>'.self::_table_decode_line($line, self::_table_decode_middle($hdr[self::_table_line_type($i, $tnr, array_keys($hdr), FALSE)]), self::_table_line_type($i, $tnr, array_keys($hdr))).'</tr>'.(!in_array($i+1, $tnr) ? '</table>' : NULL);
+				$lines[$i] = (!in_array($i-1, $tnr) || (isset($hdr[$i-1]) && !in_array($i-2, $tnr)) ? '<table>' : NULL).'<tr>'.self::_table_decode_line($line, self::_table_decode_middle($hdr[self::_table_line_type($i, $tnr, array_keys($hdr), FALSE)]), self::_table_line_type($i, $tnr, array_keys($hdr))).'</tr>'.(!in_array($i+1, $tnr) ? '</table>' : NULL);
 			}
 		}
 		foreach($hdr as $q=>$i){ unset($lines[$q]); }
@@ -154,8 +154,8 @@ class Markdown extends \Morpheus {
 	}
 	function _table_decode_line($line, $align=array(), $el='td'){
 		$str = $line;
-		$str = preg_replace('#\s?[\|]\s*$#', '', $str);
-		$str = preg_replace('#^\s*[\|]\s?#', '', $str);
+		//*fix*/ $str = preg_replace('#\s?[\|]\s*$#', '', $str);
+		/*fix*/ $str = preg_replace('#^\s*[\|]\s?#', '', $str);
 		preg_match_all('#([^\|]+)(\s?[\|]{1,}\s?|$)#', $str, $buffer);
 		//*debug*/ print '<!-- '.$str.' #='.print_r($buffer, TRUE).' -->';
 		$add = 0;
