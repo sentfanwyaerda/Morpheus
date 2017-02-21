@@ -153,7 +153,7 @@ class Markdown extends \Morpheus {
 		else{ return (isset($$typ) ? $$typ : FALSE); }
 	}
 	function _table_decode_line($line, $align=array(), $el='td'){
-		$str = $line;
+		$str = $line; $resstr = NULL;
 		//*fix*/ $str = preg_replace('#\s?[\|]\s*$#', '', $str);
 		/*fix*/ $str = preg_replace('#^\s*[\|]\s?#', '', $str);
 		preg_match_all('#([^\|]+)(\s?[\|]{1,}\s?|$)#', $str, $buffer);
@@ -162,10 +162,11 @@ class Markdown extends \Morpheus {
 		foreach($buffer[1] as $i=>$block){
 			$debug = NULL;
 			//$debug = '<!-- '.$buffer[1][$i].' -->'.'<!-- '.$buffer[2][$i].' -->'.'<!-- '.$align[$i].' -->';
-			$str = str_replace($buffer[0][$i], '<'.$el.($align[$i+$add] !== NULL ? ' align="'.$align[$i+$add].'"' : NULL).(strlen(trim($buffer[2][$i])) >= 2 ? ' colspan="'.strlen(trim($buffer[2][$i])).'"' : NULL).'>'.trim($block).$debug.'</'.$el.'>', $str);
+			//$str = str_replace($buffer[0][$i], '<'.$el.($align[$i+$add] !== NULL ? ' align="'.$align[$i+$add].'"' : NULL).(strlen(trim($buffer[2][$i])) >= 2 ? ' colspan="'.strlen(trim($buffer[2][$i])).'"' : NULL).'>'.trim($block).$debug.'</'.$el.'>', $str);
+			$resstr .= '<'.$el.($align[$i+$add] !== NULL ? ' align="'.$align[$i+$add].'"' : NULL).(strlen(trim($buffer[2][$i])) >= 2 ? ' colspan="'.strlen(trim($buffer[2][$i])).'"' : NULL).'>'.trim($block).$debug.'</'.$el.'>';
 			$add += (strlen(trim($buffer[2][$i])) >= 2 ? strlen(trim($buffer[2][$i]))-1 : 0);
 		}
-		return $str;
+		return $resstr;
 	}
 	function _table_decode_middle($line){
 		$align = array();
