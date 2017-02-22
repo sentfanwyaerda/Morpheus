@@ -298,7 +298,18 @@ class Morpheus {
 							if(class_exists('Hades') && method_exists('Hades','get_element_by_name')){ $val = Hades::get_element_by_name($b['name-part']); }
 							break;
 						case ':=':
+							/*debug*/ print '<!-- := '.$b['conditional-full'].' '.print_r($b, TRUE).' -->';
 							$val = self::str_calculate($b['conditional-full']);
+							if(isset($b['condition-match-full'])){
+								switch(strtolower($b['condition-match-full'])){
+									case 'round': $val = round($val, (is_int($b['condition-match-to']) || preg_match('#^\d+$#', $b['condition-match-to']) ? (int) $b['condition-match-to'] : 0)); break;
+									case 'ceil': $val = ceil($val); break;
+									case 'floor': $val = floor($val); break;
+									case 'format': $f = explode('|', $b['condition-match-to']); $val = number_format($val, (is_int($f[0]) || preg_match('#^\d+$#', $f[0]) ? (int) $f[0] : 0), (isset($f[1]) ? $f[1] : '.'), (isset($f[2]) ? $f[2] : ',') ); break;
+									case 'sqrt': $val = sqrt($val);
+									case 'pi': $val = pi();
+								}
+							}
 							//$val = $b['conditional-full'];
 							break;
 						default:
@@ -367,7 +378,7 @@ class Morpheus {
 		/*restore*/ $ender = Morpheus::escape_preg_chars($postfix); $altstr = $str;
 		switch(strtolower($pselector)){
 			case 'mathematics': case 'math':
-				preg_match_all('#'.Morpheus::escape_preg_chars($prefix).'([\*]{1,2}|[\#])?([\:]([^\:]+)[\:]|[\<]([^\>]+)[\>])?((((([\:][\=])))))([^'.$ender.']+)'.$ender.'#i', $altstr, $buffer);
+				preg_match_all('#'.Morpheus::escape_preg_chars($prefix).'([\*]{1,2}|[\#])?([\:]([^\:]+)[\:]|[\<]([^\>]+)[\>])?(([\:][\=]))([\(\[\{]([a-z0-9-]+)[\}\]\)])?(\=)?([^'.$ender.'\:]+)([\:](round|floor|ceil|format|sqrt|pi)([\(]([^\)]+)[\)])?)?'.$ender.'#i', $altstr, $buffer);
 				break;
 			case 'default': default:
 				preg_match_all('#'.Morpheus::escape_preg_chars($prefix).'([\*]{1,2}|[\#])?([\:]([^\:]+)[\:]|[\<]([^\>]+)[\>])?(([\.\%\@\!\~\\\\]|[>\&\/\^]\s?)?([a-z0-9_-]+([\[][a-z0-9_-]+[\]])*(\.length|\.toupper|\.tolower|\.ucfirst|\.typeof|\.class)?))([\|]([^'.Morpheus::escape_preg_chars($postfix).']*)|(([\!\=\^\$]?[\=]|[\<\>][\=]?|\<\>)([^\?]+))?[\?]([^\:]*)[\:]([^'.$ender.']*))?'.$ender.'#i', $altstr, $buffer);
@@ -375,11 +386,26 @@ class Morpheus {
 		return (is_array($select) || !isset($buffer[$select]) ? $buffer : array_unique($buffer[$select]));
 	}
 	function str_calculate($str){
-		if(is_double($str)){ return $str; }
-		elseif(preg_match('#^\s*\-?[\d\.\s]+$#', $str)){ return $str; }
-		elseif(preg_match('#^\s*(\-?[\d\.\s]+)([\+\-\*\/\^])(.*)$#', $str, $matches) !== FALSE){
+		if(is_double($str)){
+			//*debug*/ print '<!-- str_calculate: (double) '.$str.' -->';
+			return $str;
+		}
+		elseif(preg_match('#^\s*\-?[\d\.\s]+$#', $str)){
+			//*debug*/ print '<!-- str_calculate: (string|double) '.$str.' -->';
+			return $str;
+		}
+		elseif(preg_match('#^\s*[\(]([^\)]+)[\)](.*)$#', $str, $buffer)){
+			//*debug*/ print '<!-- str_calculate: (encapsuled) '.$str.' -->';
+			$encapsule = self::str_calculate($buffer[1]);
+			return self::str_calculate($encapsule.$buffer[2]);
+		}
+		elseif(preg_match('#^\s*(\-?[\d\.\s]+)([\+\-\*\/\^])(.*)$#', $str, $matches)){ //!== FALSE
+			//*debug*/ print '<!-- str_calculate: (calculate) '.$str.' -->';
 			//if(!preg_match('/\s*\-?[\d\.\s]+/', $matches[3])){ $matches[3] = self::str_calculate($matches[3]); }
-			if(preg_match('#^\s*(\-?[\d\.\s]+)([\+\-\*\/\^])#', $matches[3])){ $matches[3] = self::str_calculate($matches[3]); }
+			if(preg_match('#^\s*(\-?[\d\.\s]+)([\+\-\*\/\^])#', $matches[3])){
+				//*debug*/ print '<!-- ..continue with: '.$matches[3].' -->';
+				$matches[3] = self::str_calculate($matches[3]);
+			}
 		    $operator = $matches[2];
 			switch($operator){
 				case '+': $p = $matches[1] + $matches[3]; break;
@@ -388,8 +414,12 @@ class Morpheus {
 				case '/': $p = $matches[1] / $matches[3]; break;
 				case '^': $p = pow( $matches[1], $matches[3] ); break;
 			}
+			//*debug*/ print '<!-- result: '.$p.' -->';
 			return $p;
-		} else { return $str; }
+		} else {
+			//*debug*/ print '<!-- str_calculate does not know how to handle: '.$str.' -->';
+			return $str;
+		}
 	}
 	
 	function get_tags($str=NULL, $all=TRUE){
