@@ -6,7 +6,8 @@ class Morpheus {
 	private $_template = NULL;
 	private $_tag = array();
 	
-	function Morpheus($a=NULL, $b=array(), $c=FALSE){
+	function Morpheus($a=NULL, $b=array(), $c=FALSE){ return $this->__construct($a, $b, $c); }
+	function __construct($a=NULL, $b=array(), $c=FALSE){
 		if(is_array($b)){ $this->_tag = $b; }
 		if(!($a === NULL) && is_string($a)){
 			if(preg_match("#[\.](".implode('|', Morpheus::get_file_extensions()).")$#", $a)){
@@ -78,7 +79,7 @@ class Morpheus {
 			if($mroot = self::get_root($m)){
 				if(is_dir($mroot)){
 					foreach($ext as $j=>$x){
-						if(file_exists($mroot.$name.($x === NULL ? NULL : '.'.$x))){ return $mroot.$name.($x === NULL ? NULL : '.'.$x); }
+						if(file_exists((substr($name, 0, strlen($mroot)) == $mroot ? NULL : $mroot).$name.($x === NULL ? NULL : '.'.$x))){ return (substr($name, 0, strlen($mroot)) == $mroot ? NULL : $mroot).$name.($x === NULL ? NULL : '.'.$x); }
 					}
 				}
 			}
@@ -563,6 +564,7 @@ class Morpheus {
 	function __toString(){
 		Morpheus::notify(__METHOD__);
 		if(isset($this) && isset($this->_template) ){
+			if($this->_template === NULL && file_exists($this->_src)){ $this->_template = $this->load_template($this->_src, FALSE); }
 			return self::strip_tags(self::parse($this->_template, $this));
 			//return $this->mustache($this->_template, $this);
 		} else { return NULL; }
