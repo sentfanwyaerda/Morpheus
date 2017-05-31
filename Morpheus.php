@@ -567,7 +567,7 @@ class Morpheus {
 			if($this->_template === NULL && file_exists($this->_src)){ $this->_template = $this->load_template($this->_src, FALSE); }
 			return self::strip_tags(self::parse($this->_template, $this));
 			//return $this->mustache($this->_template, $this);
-		} else { return NULL; }
+		} else { return ''; }
 	}
 }
 ?>
