@@ -562,12 +562,16 @@ class Morpheus {
 	}
 	
 	function __toString(){
-		Morpheus::notify(__METHOD__);
 		if(isset($this) && isset($this->_template) ){
 			if($this->_template === NULL && file_exists($this->_src)){ $this->_template = $this->load_template($this->_src, FALSE); }
-			return self::strip_tags(self::parse($this->_template, $this));
+			$res = self::strip_tags(self::parse($this->_template, $this));
+			Morpheus::notify(__METHOD__, array_merge((isset($this->_src) ? array('src'=>$this->_src) : array()), (isset($this->_domain) ? array('domain'=>$this->_domain) : array()), array('length'=>strlen($res),'sha1'=>sha1($res),'tags'=>count($this->_tag))) );
+			return $res;
 			//return $this->mustache($this->_template, $this);
-		} else { return ''; }
+		} else {
+			Morpheus::notify(__METHOD__);
+			return '';
+		}
 	}
 }
 ?>
