@@ -144,8 +144,8 @@ class Morpheus {
 				}
 				break;
 			case '.':
-				if(class_exists('Hades') && method_exists('Hades','get_status_flags')){
-					//implement like % (Heracles)
+				if(class_exists('Hades') && method_exists('Hades','get_element_by_name')){
+					$str = \Hades::get_element_by_name($id);
 				}
 				break;
 			case '@': case '!': case '~': case '\\':
@@ -296,7 +296,7 @@ class Morpheus {
 							}
 							break;
 						case '.': //domain Hades
-							if(class_exists('Hades') && method_exists('Hades','get_element_by_name')){ $val = Hades::get_element_by_name($b['name-part']); }
+							if(class_exists('Hades') && method_exists('Hades','get_element_by_name')){ $val = \Hades::get_element_by_name($b['name-part']); }
 							break;
 						case ':=':
 							/*debug*/ print '<!-- := '.$b['conditional-full'].' '.print_r($b, TRUE).' -->';
