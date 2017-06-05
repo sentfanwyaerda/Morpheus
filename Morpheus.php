@@ -1,19 +1,19 @@
 <?php
 class Morpheus {
 	//private $_parsers = array();
-	private $_src = FALSE;
-	private $_domain = "text/plain";
-	private $_template = NULL;
-	private $_tag = array();
+	/*private*/ var $_src = FALSE;
+	/*private*/ var $_domain = "text/plain";
+	/*private*/ var $_template = NULL;
+	/*private*/ var $_tag = array();
 	
-	function Morpheus($a=NULL, $b=array(), $c=FALSE){ return $this->__construct($a, $b, $c); }
-	function __construct($a=NULL, $b=array(), $c=FALSE){
+	function Morpheus($a=NULL, $b=array(), $c=FALSE, $depth=1){ return $this->__construct($a, $b, $c, $depth); }
+	function __construct($a=NULL, $b=array(), $c=FALSE, $depth=1){
 		if(is_array($b)){ $this->_tag = $b; }
 		if(!($a === NULL) && is_string($a)){
 			if(preg_match("#[\.](".implode('|', Morpheus::get_file_extensions()).")$#", $a)){
 				$this->_src = $a;
 				if(!($c===FALSE)){ $this->_domain = $c; }
-				$this->_template = $this->load_template($this->_src, FALSE);
+				$this->_template = $this->load_template($this->_src, FALSE, $depth);
 			} //*/
 			elseif(class_exists('Hades') && preg_match("#^([\\]?[a-z][a-z_]+([\\][a-z_]+)*)[:]{2}([a-z_]+)$#", $a, $buf) && class_exists($buf[1]) && method_exists($buf[1], $buf[3]) && method_exists($buf[1], 'validate_hades_elements') ){
 				$nam = $buf[1]; $other = new $nam(); $act = $buf[3];
@@ -527,11 +527,20 @@ class Morpheus {
 		}
 		return FALSE;
 	}
-	public function load_template($src=NULL, $ext=NULL){
+	public function load_template($src=NULL, $ext=NULL, $depth=2){
 		//Morpheus::notify(__METHOD__, array('src'=>$src, 'ext'=>$ext) );
+		if($src === NULL && isset($this)){ $src = $this->_src; }
 		$sub = (isset($this) && isset($this->_domain) ? $this->_domain : NULL);
-		if($uri = self::get_file_uri($src, $sub, $ext)){
-			return file_get_contents($uri);
+		$uri = self::get_file_uri($src, $sub, $ext);
+		if($uri && preg_match("#[\.](".implode('|', \Morpheus::get_file_extensions()).")$#", $src, $buf)){
+			switch(strtolower($buf[1])){
+				case 'md': case 'markdown':
+					$res = ($depth > 0 && class_exists('\Morpheus\markdown') && !preg_match('#^[\\/]?Morpheus[\\/]markdown$#i', get_class($this)) ? new \Morpheus\markdown($src, (isset($this) && isset($this->_tag) ? $this->_tag : NULL), $sub, $depth-1) : file_get_contents($uri) ); break;
+				default:
+					$res = file_get_contents($uri);
+			}
+			if(isset($this)){ $this->_template = $res; }
+			return $res;
 		}
 		return FALSE;
 	}
@@ -561,15 +570,31 @@ class Morpheus {
 		return $set;
 	}
 	
+	function inception($obj=NULL){
+		if($obj === NULL){
+			if(isset($this) && isset($this->_template) && is_object($this->_template)){ $obj =& $this->_template; }
+			else{ $obj = new Morpheus(); }
+		}
+		/*insert inception actions*/
+		return $obj;
+	}
 	function __toString(){
 		if(isset($this) && isset($this->_template) ){
-			if($this->_template === NULL && file_exists($this->_src)){ $this->_template = $this->load_template($this->_src, FALSE); }
-			$res = self::strip_tags(self::parse($this->_template, $this));
-			Morpheus::notify(__METHOD__, array_merge((isset($this->_src) ? array('src'=>$this->_src) : array()), (isset($this->_domain) ? array('domain'=>$this->_domain) : array()), array('length'=>strlen($res),'sha1'=>sha1($res),'tags'=>count($this->_tag))) );
-			return $res;
+			if($this->_template === NULL && file_exists($this->_src)){ $this->_template = $this->load_template($this->_src, FALSE, 0); }
+			if(is_object($this->_template) && method_exists($this->_template, '__toString')){
+				$this->inception($this->_template);
+				$res = (string) $this->_template;
+				\Morpheus::notify(__METHOD__.'.inception', array_merge(array('mode'=>get_class($this->_template)), (isset($this->_src) ? array('src'=>$this->_src) : array()), (isset($this->_domain) ? array('domain'=>$this->_domain) : array()), array('length'=>strlen($res),'sha1'=>sha1($res),'tags'=>count($this->_tag))) );
+				return $res;
+			}
+			else{
+				$res = self::strip_tags(self::parse($this->_template, $this));
+				\Morpheus::notify(__METHOD__, array_merge((isset($this->_src) ? array('src'=>$this->_src) : array()), (isset($this->_domain) ? array('domain'=>$this->_domain) : array()), array('length'=>strlen($res),'sha1'=>sha1($res),'tags'=>count($this->_tag))) );
+				return $res;
+			}
 			//return $this->mustache($this->_template, $this);
 		} else {
-			Morpheus::notify(__METHOD__);
+			\Morpheus::notify(__METHOD__);
 			return '';
 		}
 	}

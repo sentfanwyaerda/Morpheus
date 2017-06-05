@@ -5,8 +5,31 @@ require_once(dirname(__FILE__).'/Morpheus.php');
 
 class Markdown extends \Morpheus {
 	function Markdown($a=NULL, $b=array(), $c=FALSE){
-		$this->_template = $a;
-		$this->_tag = $b;
+		$this->__construct($a, $b, $c);
+	}
+
+	function __toString(){
+		if(isset($this) && isset($this->_template) ){
+			if($this->_template === NULL && file_exists($this->_src)){ $this->_template = $this->load_template($this->_src, FALSE, 0); }
+			if(is_object($this->_template) && method_exists($this->_template, '__toString')){
+				$this->inception();
+				$res = (string) $this->_template;
+				$res = $this->decode($res);
+				\Morpheus::notify(__METHOD__.'.inception');
+				return $res;
+			}
+			else{
+				//$res = self::strip_tags(self::parse($this->_template, $this));
+				$res = $this->_template;
+				$res = $this->decode($res);
+				\Morpheus::notify(__METHOD__, array_merge((isset($this->_src) ? array('src'=>$this->_src) : array()), (isset($this->_domain) ? array('domain'=>$this->_domain) : array()), array('length'=>strlen($this->_template),'sha1'=>sha1($this->_template),'decoded:length'=>strlen($res),'decoded:sha1'=>sha1($res),'tags'=>count($this->_tag))) );
+				return $res;
+			}
+			//return $this->mustache($this->_template, $this);
+		} else {
+			\Morpheus::notify(__METHOD__);
+			return '';
+		}
 	}
 	
 	function _encode_order(){ return array_reverse(self::_decode_order()); }
