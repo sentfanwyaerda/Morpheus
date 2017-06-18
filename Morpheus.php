@@ -39,6 +39,14 @@ class Morpheus {
 	function set_tag($name, $value){
 		$this->_tag[$name] = $value;
 	}
+	
+	function save($src=NULL){
+		if($src === NULL && isset($this)){ $src = $this->_src; }
+		$sub = (isset($this) && isset($this->_domain) ? $this->_domain : NULL);
+		$uri = self::get_file_uri($src, $sub);
+		if($uri){ return file_put_contents($uri, $this->_template); }
+		else{ return FALSE; }
+	}
 
 	function morpheus_hook($str){
 		//Detect Morpheus hooks
@@ -70,19 +78,19 @@ class Morpheus {
 
 	function notify($code, $vars=array(), $line=NULL){
 		//*debug*/ print '<!-- Morpheus::notify '.preg_replace('#\s+#', ' ', print_r($code, TRUE).' '.print_r($vars, TRUE).' ('.print_r($line, TRUE)).') -->'."\n";
-		if(class_exists("Hades") ){ return Hades::notify($code, $vars, $line); }
+		if(class_exists("Hades") ){ return \Hades::notify($code, $vars, $line); }
 		return FALSE;
 	}
 	function get_root($sub=NULL){
 		//*debug*/ print '<!-- Morpheus::get_root '.preg_replace('#\s+#', ' ', print_r($sub, TRUE)).' -->'."\n";
-		if(class_exists("Hades") && defined('HADES') && isset(${HADES}) ){ return Hades::get_root($sub); }
+		if(class_exists("Hades") && defined('HADES') && isset(${HADES}) ){ return \Hades::get_root($sub); }
 		/* add alias of the Heracles method */
 		return (defined('MORPHEUS_ROOT') ? constant('MORPHEUS_ROOT') : dirname(__FILE__).'/' );
 	}
 	function get_file_uri($name, $sub=NULL, $ext=FALSE, $result_number=0, $with_prefix=TRUE){
 		//*debug*/ print '<!-- Morpheus::get_file_uri '.preg_replace('#\s+#', ' ', print_r($name, TRUE).' '.print_r($sub, TRUE).' '.print_r($ext, TRUE)).' -->'."\n";
 		//*debug*/ global ${HADES}; print "\t".'<!-- '.print_r(class_exists("Hades"), TRUE).' | '.print_r(defined('HADES'), TRUE).' | '.print_r(isset(${HADES}), TRUE).' -->'."\n";
-		if(class_exists("Hades") && defined('HADES') ){ global ${HADES}; if( isset(${HADES}) ){ return Hades::get_file_uri($name, $sub, $ext, $result_number, $with_prefix); }}
+		if(class_exists("Hades") && defined('HADES') ){ global ${HADES}; if( isset(${HADES}) ){ return \Hades::get_file_uri($name, $sub, $ext, $result_number, $with_prefix); }}
 
 		if($ext === FALSE){ $ext = array_merge(array(NULL), self::get_file_extensions()); }
 		/*fix*/ if(!is_array($sub)){ $sub = array($sub); }
