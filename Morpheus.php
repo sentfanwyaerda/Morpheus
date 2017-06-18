@@ -5,7 +5,7 @@ class Morpheus {
 	/*private*/ var $_domain = "text/plain";
 	/*private*/ var $_template = NULL;
 	/*private*/ var $_tag = array();
-	
+
 	function Morpheus($a=NULL, $b=array(), $c=FALSE, $depth=1){ return $this->__construct($a, $b, $c, $depth); }
 	function __construct($a=NULL, $b=array(), $c=FALSE, $depth=1){
 		if(is_array($b)){ $this->_tag = $b; }
@@ -28,7 +28,18 @@ class Morpheus {
 			}
 		}
 	}
-	
+
+	function get_src(){ return $this->_src; }
+	function set_src($src=NULL){ $this->_src = $src; }
+	function get_domain(){ return $this->_domain; }
+	function set_domain($domain=NULL){ $this->_domain = $domain; }
+	function get_all_tags(){ return $this->_tag; }
+	function set_tags($tag=array()){ if(is_array($tag)){ $this->_tag = $tag; return TRUE; } else { return FALSE; } }
+	function merge_tags($tag=array()){ return $this->set_tags($this->get_all_tags(), (is_array($tag) ? $tag : array() )); }
+	function set_tag($name, $value){
+		$this->_tag[$name] = $value;
+	}
+
 	function morpheus_hook($str){
 		//Detect Morpheus hooks
 		/*replacement-initiate*/ $str = str_replace('</morpheus>', '¤', $str);
@@ -40,7 +51,7 @@ class Morpheus {
 		}
 		foreach($buffer[2] as $i=>$j){ if($j == '/>'){ unset($buffer[3][$i]); } } unset($buffer[2]);
 		//*debug*/ print '<pre>'; print htmlspecialchars(str_replace("¤", '</morpheus>', print_r($buffer, TRUE))); print '</pre>';
-		
+
 		//Process Morpheus hooks
 		foreach($buffer[0] as $i=>$j){
 			if(isset($buffer[1][$i]["ref"]) && substr($buffer[1][$i]["ref"], 0, 1) == '#' && isset($buffer[3][$i])){
@@ -51,12 +62,12 @@ class Morpheus {
 				/*clear*/ $str = str_replace($buffer[0][$i], NULL, $str); 
 			}
 		}
-		
+
 		//*fix*/ foreach($buffer[0] as $i=>$v){ $str = str_replace($buffer[0][$i], '<font color="red">'.md5($buffer[0][$i]).'</font>', $str); }
 		/*replacement-restore*/ $str = str_replace('¤', '</morpheus>', $str);
 		return $str;
 	}
-	
+
 	function notify($code, $vars=array(), $line=NULL){
 		//*debug*/ print '<!-- Morpheus::notify '.preg_replace('#\s+#', ' ', print_r($code, TRUE).' '.print_r($vars, TRUE).' ('.print_r($line, TRUE)).') -->'."\n";
 		if(class_exists("Hades") ){ return Hades::notify($code, $vars, $line); }
@@ -72,7 +83,7 @@ class Morpheus {
 		//*debug*/ print '<!-- Morpheus::get_file_uri '.preg_replace('#\s+#', ' ', print_r($name, TRUE).' '.print_r($sub, TRUE).' '.print_r($ext, TRUE)).' -->'."\n";
 		//*debug*/ global ${HADES}; print "\t".'<!-- '.print_r(class_exists("Hades"), TRUE).' | '.print_r(defined('HADES'), TRUE).' | '.print_r(isset(${HADES}), TRUE).' -->'."\n";
 		if(class_exists("Hades") && defined('HADES') ){ global ${HADES}; if( isset(${HADES}) ){ return Hades::get_file_uri($name, $sub, $ext, $result_number, $with_prefix); }}
-		
+
 		if($ext === FALSE){ $ext = array_merge(array(NULL), self::get_file_extensions()); }
 		/*fix*/ if(!is_array($sub)){ $sub = array($sub); }
 		foreach($sub as $i=>$m){
@@ -86,12 +97,12 @@ class Morpheus {
 		}
 		return FALSE;
 	}
-	
+
 	/* Parser Engine*/
 	private function _execute_parsers($str){
 		return $str;
 	}
-	
+
 	/* Basic Template Parser */
 	public function basic_parse_str($str, $flags=array(), $prefix='{', $postfix='}', $parse=FALSE){
 		/**/ $str = self::parse_include_str($str, $flags, $prefix, $postfix, $parse);
@@ -514,7 +525,10 @@ class Morpheus {
 			$this->_template = $template;
 		}
 	}
-	public function get_template(){ return (isset($this) && isset($this->_template) ? $this->_template : NULL); }
+	public function get_template($allow_inception=FALSE){
+		if(!($allow_inception === FALSE) && isset($this) && is_object($this->_template) && method_exists($this->_template, 'get_template')){ return $this->_template->get_template($allow_inception); }
+		return (isset($this) && isset($this->_template) ? $this->_template : NULL);
+	}
 	public function _old_load_template($src=NULL, $ext=TRUE){
 		if($ext === FALSE){ $ext = array(); }
 		elseif($ext === TRUE || (!is_string($ext) && !is_array($ext))){ $ext = Morpheus::get_file_extensions(); }
