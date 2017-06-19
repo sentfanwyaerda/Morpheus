@@ -12,9 +12,10 @@ class Markdown extends \Morpheus {
 		if(isset($this) && isset($this->_template) ){
 			if($this->_template === NULL && file_exists($this->_src)){ $this->_template = $this->load_template($this->_src, FALSE, 0); }
 			if(is_object($this->_template) && method_exists($this->_template, '__toString')){
-				$this->inception();
+				$this->inception($this->_template);
 				$res = (string) $this->_template;
 				$res = $this->decode($res);
+				$res = self::strip_tags(self::parse($res, $this));
 				\Morpheus::notify(__METHOD__.'.inception');
 				return $res;
 			}
@@ -22,6 +23,7 @@ class Markdown extends \Morpheus {
 				//$res = self::strip_tags(self::parse($this->_template, $this));
 				$res = $this->_template;
 				$res = $this->decode($res);
+				$res = self::strip_tags(self::parse($res, $this));
 				\Morpheus::notify(__METHOD__, array_merge((isset($this->_src) ? array('src'=>$this->_src) : array()), (isset($this->_domain) ? array('domain'=>$this->_domain) : array()), array('length'=>strlen($this->_template),'sha1'=>sha1($this->_template),'decoded:length'=>strlen($res),'decoded:sha1'=>sha1($res),'tags'=>count($this->_tag))) );
 				return $res;
 			}
