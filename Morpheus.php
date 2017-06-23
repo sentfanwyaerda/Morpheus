@@ -600,6 +600,21 @@ class Morpheus {
 		/*insert inception actions*/
 		return $obj;
 	}
+	function baseurl(){
+		if(class_exists('\Hades') && method_exists('\Hades', 'baseurl') ){ return \Hades::baseurl(); }
+		// within a template {baseurl|./}mypath/file.ext is used to navigate from the root directory to the file
+		$i = 0;
+		if(isset($this) && isset($this->_src)){
+			//calculate the amount of maps you should go up before getting at the root directory
+			$b = $this->_src;
+			$c = $this->get_file_uri(NULL, $this->_domain);
+			//$b = dirname($b);
+			$b = preg_replace('#^'.$c.'#', '', $b);
+			/*fix*/ $b = str_replace('\\', '/', $b);
+			$i = ( count(explode('/', $b)) - 1 );
+		}
+		return (FALSE ? $b.' @ '.$c.' &rarr; ' : NULL).($i > 0 ? str_repeat('../', $i) : './');
+	}
 	function __toString(){
 		if(isset($this) && isset($this->_template) ){
 			if($this->_template === NULL && file_exists($this->_src)){ $this->_template = $this->load_template($this->_src, FALSE, 0); }
