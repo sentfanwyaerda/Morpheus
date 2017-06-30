@@ -12,7 +12,7 @@ class Morpheus {
 		if(!($a === NULL) && is_string($a)){
 			if(preg_match("#[\.](".implode('|', Morpheus::get_file_extensions()).")$#", $a)){
 				$this->_src = $a;
-				if(!($c===FALSE)){ $this->_domain = $c; }
+				if(!($c===FALSE)){ $this->_domain = $c; } // $this->set_domain($c); }
 				$this->_template = $this->load_template($this->_src, FALSE, $depth);
 			} //*/
 			elseif(class_exists('Hades') && preg_match("#^([\\]?[a-z][a-z_]+([\\][a-z_]+)*)[:]{2}([a-z_]+)$#", $a, $buf) && class_exists($buf[1]) && method_exists($buf[1], $buf[3]) && method_exists($buf[1], 'validate_hades_elements') ){
@@ -32,7 +32,10 @@ class Morpheus {
 	function get_src(){ return $this->_src; }
 	function set_src($src=NULL){ $this->_src = $src; }
 	function get_domain(){ return $this->_domain; }
-	function set_domain($domain=NULL){ $this->_domain = $domain; }
+	function set_domain($domain=NULL){
+		//*debug*/ print '<!-- Morpheus::set_domain '.print_r($domain, TRUE).' & '.$this->_src.' '.microtime().' -->'."\n";
+		//$this->_domain = $domain;
+	}
 	function get_all_tags(){ return $this->_tag; }
 	function set_tags($tag=array()){ if(is_array($tag)){ $this->_tag = $tag; return TRUE; } else { return FALSE; } }
 	function merge_tags($tag=array()){ return $this->set_tags($this->get_all_tags(), (is_array($tag) ? $tag : array() )); }
@@ -88,11 +91,12 @@ class Morpheus {
 		return (defined('MORPHEUS_ROOT') ? constant('MORPHEUS_ROOT') : dirname(__FILE__).'/' );
 	}
 	function get_file_uri($name, $sub=NULL, $ext=FALSE, $result_number=0, $with_prefix=TRUE){
+		if($sub === NULL) { $sub = (isset($this) && isset($this->_domain) ? $this->_domain : NULL); }
+		if($ext === FALSE){ $ext = array_merge(array(NULL), self::get_file_extensions()); }
 		//*debug*/ print '<!-- Morpheus::get_file_uri '.preg_replace('#\s+#', ' ', print_r($name, TRUE).' '.print_r($sub, TRUE).' '.print_r($ext, TRUE)).' -->'."\n";
 		//*debug*/ global ${HADES}; print "\t".'<!-- '.print_r(class_exists("Hades"), TRUE).' | '.print_r(defined('HADES'), TRUE).' | '.print_r(isset(${HADES}), TRUE).' -->'."\n";
-		if(class_exists("Hades") && defined('HADES') ){ global ${HADES}; if( isset(${HADES}) ){ return \Hades::get_file_uri($name, $sub, $ext, $result_number, $with_prefix); }}
+		if(class_exists("Hades")){ return \Hades::get_file_uri($name, $sub, $ext, $result_number, $with_prefix); }
 
-		if($ext === FALSE){ $ext = array_merge(array(NULL), self::get_file_extensions()); }
 		/*fix*/ if(!is_array($sub)){ $sub = array($sub); }
 		foreach($sub as $i=>$m){
 			if($mroot = self::get_root($m)){
@@ -306,7 +310,10 @@ class Morpheus {
 				} else {
 					switch($b['name-prefix']){
 						case '> ': case '>':
-							$val = file_get_contents(self::get_file_uri($b['name-part']));
+							$sub = (isset($this) ? $this->_domain : NULL);
+							$uri = self::get_file_uri($b['name-part'], $sub /*, $ext*/);
+							/*debug*/ print '<!-- '.__METHOD__.' &gt; uri = '; print_r($uri); print ' #'.$sub.' '.microtime().' -->'."\n<!--"; print_r($this); print ' -->'."\n";
+							if($uri){ $val = file_get_contents($uri); }
 							break;
 						case '%': //domain: Heracles
 							if(class_exists('Heracles') && method_exists('Heracles','load_record_flags')){
