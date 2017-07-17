@@ -608,6 +608,7 @@ class Morpheus {
 		return $obj;
 	}
 	function baseurl(){
+		if(isset($this->_tag['baseurl'])){ return $this->_tag['baseurl']; }
 		if(class_exists('\Hades') && method_exists('\Hades', 'baseurl') ){ return \Hades::baseurl(); }
 		// within a template {baseurl|./}mypath/file.ext is used to navigate from the root directory to the file
 		$i = 0;
@@ -621,6 +622,12 @@ class Morpheus {
 			$i = ( count(explode('/', $b)) - 1 );
 		}
 		return (FALSE ? $b.' @ '.$c.' &rarr; ' : NULL).($i > 0 ? str_repeat('../', $i) : './');
+	}
+	function file_exists(){
+		if(isset($this->_tag['file_exists'])){ return $this->_tag['file_exists']; }
+		$file = $this->get_file_uri($this->_src, $this->_domain);
+		//print $this->_src."\t"; print_r($file); print "\n";
+		return (strlen($file) > 0 && file_exists($file) ? 'true' : 'false');
 	}
 	function __toString(){
 		if(isset($this) && isset($this->_template) ){
