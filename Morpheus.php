@@ -365,6 +365,7 @@ class Morpheus {
 									case '*=': $val = (preg_match('#'.Morpheus::escape_preg_chars($b['condition-match-to']).'#', $val) ? TRUE : FALSE); break;
 									case ':=': case '=:': case '::': case ':!=': case '=!:': case ':!:': /*yet to implement: in_array / intersection & negatives*/ break;
 									case '<=>': /*spaceship*/ break;
+									case '&&': $val = ($val && $flags[$b['condition-match-to']]); break;
 									default:
 								}
 								//*debug*/ print ' := '.print_r($val, TRUE)."\n";
@@ -408,7 +409,7 @@ class Morpheus {
 				preg_match_all('#'.Morpheus::escape_preg_chars($prefix).'([\*]{1,2}|[\#])?([\:]([^\:]+)[\:]|[\<]([^\>]+)[\>])?(([\:][\=]))([\(\[\{]([a-z0-9-]+)[\}\]\)])?(\=)?([^'.$ender.'\:]+)([\:](round|floor|ceil|format|sqrt|pi)([\(]([^\)]+)[\)])?)?'.$ender.'#i', $altstr, $buffer);
 				break;
 			case 'default': default:
-				preg_match_all('#'.Morpheus::escape_preg_chars($prefix).'([\*]{1,2}|[\#])?([\:]([^\:]+)[\:]|[\<]([^\>]+)[\>])?(([\.\%\@\!\~\\\\]|[>\&\/\^]\s?)?([a-z0-9_-]+([\[][a-z0-9_-]+[\]])*(\.length|\.toupper|\.tolower|\.ucfirst|\.typeof|\.class)?))([\|]([^'.Morpheus::escape_preg_chars($postfix).']*)|(([\!\=\^\$]?[\=]|[\<\>][\=]?|\<\>)([^\?]+))?[\?]([^\:]*)[\:]([^'.$ender.']*))?'.$ender.'#i', $altstr, $buffer);
+				preg_match_all('#'.Morpheus::escape_preg_chars($prefix).'([\*]{1,2}|[\#])?([\:]([^\:]+)[\:]|[\<]([^\>]+)[\>])?(([\.\%\@\!\~\\\\]|[>\&\/\^]\s?)?([a-z0-9_-]+([\[][a-z0-9_-]+[\]])*(\.length|\.toupper|\.tolower|\.ucfirst|\.typeof|\.class)?))([\|]([^'.Morpheus::escape_preg_chars($postfix).']*)|(([\!\=\^\$]?[\=]|[\<\>][\=]?|\<\>|\&\&)([^\?]+))?[\?]([^\:]*)[\:]([^'.$ender.']*))?'.$ender.'#i', $altstr, $buffer);
 		}
 		return (is_array($select) || !isset($buffer[$select]) ? $buffer : array_unique($buffer[$select]));
 	}
@@ -556,20 +557,37 @@ class Morpheus {
 		}
 		return FALSE;
 	}
-	public function load_template($src=NULL, $ext=NULL, $depth=2){
+	public function load_template($src=NULL, $ext=NULL, $depth=2, $srcraw=FALSE){
 		//Morpheus::notify(__METHOD__, array('src'=>$src, 'ext'=>$ext) );
-		if($src === NULL && isset($this)){ $src = $this->_src; }
-		$sub = (isset($this) && isset($this->_domain) ? $this->_domain : NULL);
-		$uri = self::get_file_uri($src, $sub, $ext);
-		if($uri && preg_match("#[\.](".implode('|', \Morpheus::get_file_extensions()).")$#", $src, $buf)){
-			switch(strtolower($buf[1])){
-				case 'md': case 'markdown':
-					$res = ($depth > 0 && class_exists('\Morpheus\markdown') && !preg_match('#^[\\/]?Morpheus[\\/]markdown$#i', get_class($this)) ? new \Morpheus\markdown($src, (isset($this) && isset($this->_tag) ? $this->_tag : NULL), $sub, $depth-1) : file_get_contents($uri) ); break;
-				default:
-					$res = file_get_contents($uri);
+		if($srcraw === FALSE){ //assume $src is a filepath
+			if($src === NULL && isset($this)){ $src = $this->_src; }
+			$sub = (isset($this) && isset($this->_domain) ? $this->_domain : NULL);
+			$uri = self::get_file_uri($src, $sub, $ext);
+			if($uri && preg_match("#[\.](".implode('|', \Morpheus::get_file_extensions()).")$#", $src, $buf)){
+				switch(strtolower($buf[1])){
+					case 'md': case 'markdown':
+						$res = ($depth > 0 && class_exists('\Morpheus\markdown') && !preg_match('#^[\\/]?Morpheus[\\/]markdown$#i', get_class($this)) ? new \Morpheus\markdown($src, (isset($this) && isset($this->_tag) ? $this->_tag : NULL), $sub, $depth-1) : file_get_contents($uri) ); break;
+					default:
+						$res = file_get_contents($uri);
+				}
+				if(isset($this)){ $this->_template = $res; }
+				return $res;
 			}
-			if(isset($this)){ $this->_template = $res; }
-			return $res;
+		} else { //assume $src is already raw contents
+			if($src === NULL && isset($this)){ $src = $this->_template; }
+			$sub = (isset($this) && isset($this->_domain) ? $this->_domain : NULL);
+			$uri = $sub.'/preview.'.$ext;
+			if($uri && preg_match("#[\.](".implode('|', \Morpheus::get_file_extensions()).")$#", $uri, $buf)){
+				switch(strtolower($buf[1])){
+					case 'md': case 'markdown':
+						$res = ($depth > 0 && class_exists('\Morpheus\markdown') && !preg_match('#^[\\/]?Morpheus[\\/]markdown$#i', get_class($this)) ? new \Morpheus\markdown($src, (isset($this) && isset($this->_tag) ? $this->_tag : NULL), $sub, $depth-1) : $src ); break;
+					default:
+						$res = $src;
+				}
+				if(isset($this)){ $this->_template = $res; }
+				return $res;
+			}
+			return TRUE;
 		}
 		return FALSE;
 	}
