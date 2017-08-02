@@ -42,6 +42,7 @@ class Morpheus {
 	function set_tag($name, $value){
 		$this->_tag[$name] = $value;
 	}
+	function get_tag($name){ return $this->_tag[$name]; }
 	
 	function save($src=NULL){
 		if($src === NULL && isset($this)){ $src = $this->_src; }
