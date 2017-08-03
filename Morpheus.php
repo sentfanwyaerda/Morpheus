@@ -44,10 +44,12 @@ class Morpheus {
 	}
 	function get_tag($name){ return $this->_tag[$name]; }
 	
-	function save($src=NULL){
+	function save($src=NULL, $allow_create=FALSE){
+		/*fix; skips first variable*/ if(is_bool($src)){ $allow_create = $src; $src = NULL; }
 		if($src === NULL && isset($this)){ $src = $this->_src; }
 		$sub = (isset($this) && isset($this->_domain) ? $this->_domain : NULL);
-		$uri = self::get_file_uri($src, $sub);
+		$uri = self::get_file_uri($src, $sub, ($allow_create === TRUE ? NULL : FALSE), 0, TRUE, $allow_create);
+		//*debug*/ print '<pre> \Morpheus::save '.$src.' ('.$sub.') '.$uri.' </pre>'."\n";
 		if($uri){ return file_put_contents($uri, $this->_template); }
 		else{ return FALSE; }
 	}
@@ -91,12 +93,12 @@ class Morpheus {
 		/* add alias of the Heracles method */
 		return (defined('MORPHEUS_ROOT') ? constant('MORPHEUS_ROOT') : dirname(__FILE__).'/' );
 	}
-	function get_file_uri($name, $sub=NULL, $ext=FALSE, $result_number=0, $with_prefix=TRUE){
+	function get_file_uri($name, $sub=NULL, $ext=FALSE, $result_number=0, $with_prefix=TRUE, $allow_create=FALSE){
 		if($sub === NULL) { $sub = (isset($this) && isset($this->_domain) ? $this->_domain : NULL); }
 		if($ext === FALSE){ $ext = array_merge(array(NULL), self::get_file_extensions()); }
 		//*debug*/ print '<!-- Morpheus::get_file_uri '.preg_replace('#\s+#', ' ', print_r($name, TRUE).' '.print_r($sub, TRUE).' '.print_r($ext, TRUE)).' -->'."\n";
 		//*debug*/ global ${HADES}; print "\t".'<!-- '.print_r(class_exists("Hades"), TRUE).' | '.print_r(defined('HADES'), TRUE).' | '.print_r(isset(${HADES}), TRUE).' -->'."\n";
-		if(class_exists("Hades")){ return \Hades::get_file_uri($name, $sub, $ext, $result_number, $with_prefix); }
+		if(class_exists("Hades")){ return \Hades::get_file_uri($name, $sub, $ext, $result_number, $with_prefix, $allow_create); }
 
 		/*fix*/ if(!is_array($sub)){ $sub = array($sub); }
 		foreach($sub as $i=>$m){
