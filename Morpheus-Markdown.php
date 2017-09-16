@@ -35,7 +35,7 @@ class Markdown extends \Morpheus {
 	}
 	
 	function _encode_order(){ return array_reverse(self::_decode_order()); }
-	function _decode_order(){ return array('clean','bold','italic','strikethrough', 'inline_code', 'syntax_highlighting', /*'underline',*/ 'link', 'headers','horizontal_rule', 'blockquote', 'lists', 'task_done', 'table', 'p_br','clean'); }
+	function _decode_order(){ return array('clean','bold','italic','strikethrough', 'inline_code', 'syntax_highlighting', /*'underline',*/ 'link', 'image', 'headers','horizontal_rule', 'blockquote', 'lists', 'task_done', 'table', 'p_br','clean'); }
 	
 	/* Encode: HTML to Markdown*/
 	function encode($html=FALSE){
@@ -83,6 +83,15 @@ class Markdown extends \Morpheus {
 		return $str;
 	}
 	
+	function encode_image($str=NULL){
+		$str = preg_replace('#\<img src\=\"([^\"]+)\" title=\"([^\"]+)\"\s*\/\>#', '![\\2](\\1)', $str);
+		return $str;
+	}
+	function decode_image($str=NULL){
+		$str = preg_replace('#[\!][\[]([^\]]+)[\]][\(]([^\)]+)[\)]#', '<img src="\\2" title="\\1" \/>', $str);
+		return $str;
+	}
+
 	function encode_headers($str=NULL){
 		for($i=6;$i>=1;$i--){
 			$str = str_replace('</h'.$i.'>', '¤', $str);
@@ -335,33 +344,46 @@ class Markdown extends \Morpheus {
 	
 	/*OTHER*/
 	function str(){ return $this->get_template(); }
-	function TOC($str=NULL){ //$str=NULL
-		$toc = NULL; $depth = 0; $spacer = 0;
-		//$toc = 'TABLE OF CONTENTS';
-		//print_r($this);
-		//if($str === NULL && isset($this)){
-			$str = $this->get_template();
-			$str = $this->decode_headers($str);
-		//} else { $str = '<h5>error</h5>'; }
-		//$toc .= ' ('.strlen($str).')';
-		if(preg_match_all('#<h([1-6])( id="([^"]+)")?>([^<]+)</h[1-6]>#i', $str, $buffer) > 0){
-			//$toc .= '<br/>opties: <br/>';
-			foreach($buffer[4] as $a=>$h){
-				if($depth == 0){ $spacer = $depth = ($buffer[1][$a] - 1); }
-				if($buffer[1][$a] != $depth){
-					if($buffer[1][$a] > $depth){
-						$toc .= str_repeat('<ul>', ( $buffer[1][$a] - $depth ) );
-					}
-					else{
-						$toc .= str_repeat('</ul>', ( $depth - $buffer[1][$a] ) );
-					}
-					$depth = $buffer[1][$a];
+	function TOC($str=NULL){
+		$db = self::section_database($str);
+		//return '<pre>'.print_r($db, TRUE).'</pre>';
+		$toc_html = NULL; $toc_md = NULL; $depth = 0; $spacer = 0;
+		foreach($db as $line=>$h){
+			if($depth == 0){ $spacer = $depth = ($h['depth'] - 1); }
+			if($h['depth'] != $depth){
+				if($h['depth'] > $depth){
+					$toc_html .= str_repeat('<ul>', ( $h['depth'] - $depth ) );
 				}
-				$toc .= '<li><a href="#'.$buffer[3][$a].'" onclick="ganaar(\''.$buffer[3][$a].'\', \'none\', 80);">'.$h.'</a></li>';
+				else{
+					$toc_html .= str_repeat('</ul>', ( $depth - $h['depth'] ) );
+				}
+				$depth = $h['depth'];
 			}
-			if($depth != 0){ $toc .= str_repeat('</ul>', ($depth - $spacer) ); }
+			$toc_html .= '<li><a href="#'.$h['hash'].'" onclick="ganaar(\''.$h['hash'].'\', \'none\', 80);">'.(isset($h['assigned']) ? $h['assigned'] : NULL).$h['title'].'</a></li>';
+			$toc_md .= str_repeat("\t", ($h['depth'] - 1) ).'* ['.(isset($h['assigned']) ? $h['assigned'] : NULL).$h['title'].'](#H'.$h['hash'].')'."\n";
 		}
-		return $toc;
+		if($depth != 0){ $toc_html .= str_repeat('</ul>', ($depth - $spacer) ); }
+		return self::decode("\n".$toc_md."\n");
+		//return $toc_html;
+	}
+	function section_database($str=NULL){
+		$db = array(); $line = 0; $prev = FALSE;
+		if($str === NULL && isset($this)){
+			$str = $this->get_template();
+		}
+		/*fix*/ $str = preg_replace('#(^|\n)([^\n]+)\n[\=]{3,}\n#', '\\1# \\2\n\n', $str);
+		/*fix*/ $str = preg_replace('#(^|\n)([^\n]+)\n([\-]{3,}|\<hr\/\>)\n#', '\\1## \\2\n\n', $str);
+		$buf = explode("\n", $str);
+		foreach($buf as $nr=>$line){
+			if(preg_match("#^\s*([\#]+)\s([0-9][0-9.]*[\.\)]\s)?(.*)#i", $line, $z)){
+				$db[$nr] = array('line'=>$nr,'depth'=>strlen($z[1]),'title'=>$z[3],'hash'=>'H'.substr(md5($z[2].$z[3]), 0, 15));
+				if(strlen($z[2]) > 0){ $db[$nr]['assigned'] = $z[2]; }
+				if($prev !== FALSE && isset($db[$prev])){ $db[$prev]['end'] = $nr-1; }
+				$prev = $nr;
+			}
+		}
+		if($prev !== FALSE && isset($db[$prev])){ $db[$prev]['end'] = count($buf)-1; $prev = FALSE; }
+		return $db;
 	}
 }
 ?>

@@ -381,7 +381,7 @@ class Morpheus {
 				/* aterisk (**) */ if(preg_match('#^[\*]{2}$#', $b['aterisk'])){ $val = '<a name="'.$b['name-part'].'"></a>'.$val; }
 				/*logging*/ $BLOCK[$i]['result'] = $val;
 
-				if(!($htmlencode===FALSE)){ $val = htmlencode($val); }
+				if(!($htmlencode===FALSE)){ $val = htmlentities($val); }
 
 				/* apply value */
 				$out = str_replace($b['match'], $val, $out);
