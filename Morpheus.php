@@ -10,9 +10,9 @@ class Morpheus {
 	function __construct($a=NULL, $b=array(), $c=FALSE, $depth=1){
 		if(is_array($b)){ $this->_tag = $b; }
 		if(!($a === NULL) && is_string($a)){
-			if(preg_match("#[\.](".implode('|', Morpheus::get_file_extensions()).")$#", $a)){
+			if(preg_match("#[\.](".implode('|', \Morpheus::get_file_extensions()).")$#", $a)){
 				$this->_src = $a;
-				if(!($c===FALSE)){ $this->_domain = $c; } // $this->set_domain($c); }
+				if(!($c===FALSE)){ $this->_domain = $c; } // $this->set_domain($c);
 				$this->_template = $this->load_template($this->_src, FALSE, $depth);
 			} //*/
 			elseif(class_exists('Hades') && preg_match("#^([\\]?[a-z][a-z_]+([\\][a-z_]+)*)[:]{2}([a-z_]+)$#", $a, $buf) && class_exists($buf[1]) && method_exists($buf[1], $buf[3]) && method_exists($buf[1], 'validate_hades_elements') ){
@@ -38,7 +38,7 @@ class Morpheus {
 	}
 	function get_all_tags(){ return $this->_tag; }
 	function set_tags($tag=array()){ if(is_array($tag)){ $this->_tag = $tag; return TRUE; } else { return FALSE; } }
-	function merge_tags($tag=array()){ return $this->set_tags($this->get_all_tags(), (is_array($tag) ? $tag : array() )); }
+	function merge_tags($tag=array()){ return $this->set_tags(array_merge($this->get_all_tags(), (is_array($tag) ? $tag : array() ) )); }
 	function set_tag($name, $value){
 		$this->_tag[$name] = $value;
 	}
@@ -124,7 +124,7 @@ class Morpheus {
 		foreach($flags as $tag=>$value){
 			$str = str_replace($prefix.$tag.$postfix, (is_array($value) ? json_encode($value) : (string) $value), $str);
 		}
-		if(preg_match_all("#".Morpheus::escape_preg_chars($prefix)."([\*]+|[:][^:]+[:]|[\%\@\.]{1})?([a-z][^\?".Morpheus::escape_preg_chars($postfix)."]{0,})\?([^:]+)[:]([^".Morpheus::escape_preg_chars($postfix)."]{0,})".Morpheus::escape_preg_chars($postfix)."#i", $str, $buffer)){
+		if(preg_match_all("#".\Morpheus::escape_preg_chars($prefix)."([\*]+|[:][^:]+[:]|[\%\@\.]{1})?([a-z][^\?".\Morpheus::escape_preg_chars($postfix)."]{0,})\?([^:]+)[:]([^".\Morpheus::escape_preg_chars($postfix)."]{0,})".\Morpheus::escape_preg_chars($postfix)."#i", $str, $buffer)){
 			//*debug*/ print '<!-- '; print_r($buffer); print ' -->';
 			if(isset($buffer[0]) && is_array($buffer[0])){foreach($buffer[0] as $i=>$original){
 				$str = str_replace($original, 
@@ -134,7 +134,7 @@ class Morpheus {
 						, $str);
 			}}
 		}
-		if(preg_match_all("#".Morpheus::escape_preg_chars($prefix)."([\*]+|[:][^:]+[:]|[\%\@\.]{1})?([a-z][^\|".Morpheus::escape_preg_chars($postfix)."]{0,})[\|]([^".Morpheus::escape_preg_chars($postfix)."]{0,})".Morpheus::escape_preg_chars($postfix)."#i", $str, $buffer)){
+		if(preg_match_all("#".\Morpheus::escape_preg_chars($prefix)."([\*]+|[:][^:]+[:]|[\%\@\.]{1})?([a-z][^\|".\Morpheus::escape_preg_chars($postfix)."]{0,})[\|]([^".\Morpheus::escape_preg_chars($postfix)."]{0,})".\Morpheus::escape_preg_chars($postfix)."#i", $str, $buffer)){
 			if(isset($buffer[0]) && is_array($buffer[0])){foreach($buffer[0] as $i=>$original){
 				$str = str_replace($original,
 						self::_basic_parse_encapsule($buffer[1][$i],
@@ -164,7 +164,7 @@ class Morpheus {
 				break;
 			case '%':
 				if(class_exists('Heracles') && method_exists('Heracles','load_record_flags')){
-					$flags = Heracles::load_record_flags(Heracles::get_user_id());
+					$flags = \Heracles::load_record_flags(Heracles::get_user_id());
 					//*debug*/ print '<!-- '.$id.' :{ '.$str.' } :'.print_r($flags, TRUE).' -->';
 					$str = (isset($flags[$id]) ? $flags[$id] : $str);
 				}
@@ -186,27 +186,27 @@ class Morpheus {
 	public function basic_parse($src, $flags=array()){
 		$prefix='{';
 		$postfix='}';
-		return Morpheus::basic_parse_template($src, $flags, $prefix, $postfix, TRUE);
+		return \Morpheus::basic_parse_template($src, $flags, $prefix, $postfix, TRUE);
 	}
 	public function basic_parse_template($src, $flags=array(), $prefix='{', $postfix='}', $parse=FALSE){
 		if(file_exists($src)){
 			$str = file_get_contents($src);
-			Morpheus::notify(array(__METHOD__.'.exists', 200), array("src"=>str_replace(Morpheus::get_root('text/plain'), NULL, $src)));
+			\Morpheus::notify(array(__METHOD__.'.exists', 200), array("src"=>str_replace(\Morpheus::get_root('text/plain'), NULL, $src)));
 			if(strlen($str) <= 0){
-				$str = Morpheus::basic_parse_template(Morpheus::get_root("text/error").'000-empty-document.md', array('src'=>$src, "document"=>basename($src)));
-				Morpheus::notify(000, array("src"=>str_replace(Morpheus::get_root('text/plain'), NULL, $src)));
+				$str = \Morpheus::basic_parse_template(\Morpheus::get_root("text/error").'000-empty-document.md', array('src'=>$src, "document"=>basename($src)));
+				\Morpheus::notify(000, array("src"=>str_replace(\Morpheus::get_root('text/plain'), NULL, $src)));
 			}
 		} else {
-			if($src != Morpheus::get_root("text/error").'404-not-found.md'){
-				$str = Morpheus::basic_parse_template(Morpheus::get_root("text/error").'404-not-found.md', array('src'=>$src, "document"=>basename($src)));
-				Morpheus::notify(404, array("src"=>str_replace(Morpheus::get_root('text/plain'), NULL, $src)));
+			if($src != \Morpheus::get_root("text/error").'404-not-found.md'){
+				$str = \Morpheus::basic_parse_template(\Morpheus::get_root("text/error").'404-not-found.md', array('src'=>$src, "document"=>basename($src)));
+				\Morpheus::notify(404, array("src"=>str_replace(\Morpheus::get_root('text/plain'), NULL, $src)));
 			}
 			else {
 				$str = NULL;
-				Morpheus::notify(__METHOD__.'.failed', array("src"=>str_replace(Morpheus::get_root('text/plain'), NULL, $src)));
+				\Morpheus::notify(__METHOD__.'.failed', array("src"=>str_replace(\Morpheus::get_root('text/plain'), NULL, $src)));
 			}
 		}
-		return Morpheus::basic_parse_str($str, $flags, $prefix, $postfix, $parse);
+		return \Morpheus::basic_parse_str($str, $flags, $prefix, $postfix, $parse);
 	}
 	public function escape_preg_chars($str, $qout=array(), $merge=TRUE){
 		if($merge !== FALSE){
@@ -230,11 +230,11 @@ class Morpheus {
 	
 	/*experimental: Morpheus\LaTEX & Morpheus\markdown++ */
 	/*public*/ function parse_include_str($str, $flags=array(), $prefix='{', $postfix='}', $parse=FALSE){
-		if(preg_match_all("#[\\\\]i(nclude)?".Morpheus::escape_preg_chars($prefix)."([^".Morpheus::escape_preg_chars($postfix)."]+)".Morpheus::escape_preg_chars($postfix)."#i", $str, $buffer)){
+		if(preg_match_all("#[\\\\]i(nclude)?".\Morpheus::escape_preg_chars($prefix)."([^".\Morpheus::escape_preg_chars($postfix)."]+)".\Morpheus::escape_preg_chars($postfix)."#i", $str, $buffer)){
 			if(isset($buffer[0]) && is_array($buffer[0])){foreach($buffer[0] as $i=>$original){
 				$str = str_replace($buffer[0][$i],
 						self::_basic_parse_encapsule('**',
-							self::basic_parse_template((isset($flags['content-root']) ? $flags['content-root'] : Morpheus::get_root("text/plain")).$buffer[2][$i], $flags, $prefix, $postfix, $parse),
+							self::basic_parse_template((isset($flags['content-root']) ? $flags['content-root'] : \Morpheus::get_root("text/plain")).$buffer[2][$i], $flags, $prefix, $postfix, $parse),
 							md5($buffer[2][$i])
 						)
 						, $str);
@@ -250,7 +250,7 @@ class Morpheus {
 		$str = $template; $arr = self::get_obj_tags($obj);
 		
 		/*+ Partials {{> mustache}} */
-		if(preg_match_all("#".Morpheus::escape_preg_chars(substr($prefix, 0, 2))."([\>]\s?([^\|\?".Morpheus::escape_preg_chars($postfix)."]{0,}))([\|\?][^".Morpheus::escape_preg_chars($postfix)."]+)?".Morpheus::escape_preg_chars(substr($postfix, 0, 2))."#", $str, $buffer)){
+		if(preg_match_all("#".\Morpheus::escape_preg_chars(substr($prefix, 0, 2))."([\>]\s?([^\|\?".\Morpheus::escape_preg_chars($postfix)."]{0,}))([\|\?][^".\Morpheus::escape_preg_chars($postfix)."]+)?".\Morpheus::escape_preg_chars(substr($postfix, 0, 2))."#", $str, $buffer)){
 			foreach($buffer[1] as $i=>$partial){
 				$arr[$partial] = self::load_template($buffer[2][$i]);
 				if(isset($this)){ $this->_tag[$partial] = $arr[$partial]; }
@@ -294,7 +294,7 @@ class Morpheus {
 		$flags = array_merge(self::get_tags($out), self::get_obj_tags($flags) /*, $flags*/ );
 		/*fix*/ $flags = self::array_flat($flags);
 		$mo = json_decode('[{"prefix":"{{{","postfix":"}}}","htmlencode":false},{"prefix":"{{","postfix":"}}","htmlencode":true},{"prefix":"{","postfix":"}","htmlencode":false},{"prefix":"{{{","postfix":"}}}","htmlencode":false,"pselector":"math"},{"prefix":"{{","postfix":"}}","htmlencode":false,"pselector":"math"},{"prefix":"{","postfix":"}","htmlencode":false,"pselector":"math"}]', TRUE);
-		//for($mu=count($mo)-1;$mu>=0;$mu--){
+		//for($mu=count($mo)-1;$mu>=0;$mu--)
 		for($mu=0;$mu<count($mo);$mu++){
 			$BLOCK = self::get_blocks($out, $mo[$mu]['prefix'], $mo[$mu]['postfix'], (isset($mo[$mu]['pselector']) ? $mo[$mu]['pselector'] : 'default') );
 			$htmlencode = ( isset($mo[$mu]['htmlencode']) && $mo[$mu]['htmlencode'] === TRUE );
@@ -303,7 +303,7 @@ class Morpheus {
 				/*RESET*/ $val = NULL;
 				if($b['name'] != ':=' && isset($flags[$b['name']])){
 					switch($b['name-prefix']){
-						case '&': //Mustache htmlencodes on double `{{` by default. & disables the htmlencoding
+						case '&': //Mustache htmlencodes on double {{ }} by default. & disables the htmlencoding
 							$htmlencode = FALSE;
 							$val = $flags[$b['name']];
 							break;
@@ -320,7 +320,7 @@ class Morpheus {
 							break;
 						case '%': //domain: Heracles
 							if(class_exists('Heracles') && method_exists('Heracles','load_record_flags')){
-								$h = Heracles::load_record_flags(Heracles::get_user_id());
+								$h = \Heracles::load_record_flags(Heracles::get_user_id());
 								$val = (isset($h[$b['name-part']]) ? $h[$b['name-part']] : $val);
 							}
 							break;
@@ -363,9 +363,9 @@ class Morpheus {
 									case '<=': $val = ($val <= $b['condition-match-to'] ? TRUE : FALSE); break;
 									case '>': $val = ($val > $b['condition-match-to'] ? TRUE : FALSE); break;
 									case '>=': $val = ($val >= $b['condition-match-to'] ? TRUE : FALSE); break;
-									case '^=': $val = (preg_match('#^'.Morpheus::escape_preg_chars($b['condition-match-to']).'#', $val) ? TRUE : FALSE); break;
-									case '$=': $val = (preg_match('#'.Morpheus::escape_preg_chars($b['condition-match-to']).'$#', $val) ? TRUE : FALSE); break;
-									case '*=': $val = (preg_match('#'.Morpheus::escape_preg_chars($b['condition-match-to']).'#', $val) ? TRUE : FALSE); break;
+									case '^=': $val = (preg_match('#^'.\Morpheus::escape_preg_chars($b['condition-match-to']).'#', $val) ? TRUE : FALSE); break;
+									case '$=': $val = (preg_match('#'.\Morpheus::escape_preg_chars($b['condition-match-to']).'$#', $val) ? TRUE : FALSE); break;
+									case '*=': $val = (preg_match('#'.\Morpheus::escape_preg_chars($b['condition-match-to']).'#', $val) ? TRUE : FALSE); break;
 									case ':=': case '=:': case '::': case ':!=': case '=!:': case ':!:': /*yet to implement: in_array / intersection & negatives*/ break;
 									case '<=>': /*spaceship*/ break;
 									case '&&': $val = ($val && $flags[$b['condition-match-to']]); break;
@@ -406,13 +406,13 @@ class Morpheus {
 	function get_flags($str=NULL, $prefix='{', $postfix='}', $select=5, $pselector='default', $ender='¤'){
 		if($str === NULL && isset($this)){ $str = $this->_template; }
 		$altstr = str_replace($postfix, $ender, $str);
-		/*restore*/ $ender = Morpheus::escape_preg_chars($postfix); $altstr = $str;
+		/*restore*/ $ender = \Morpheus::escape_preg_chars($postfix); $altstr = $str;
 		switch(strtolower($pselector)){
 			case 'mathematics': case 'math':
-				preg_match_all('#'.Morpheus::escape_preg_chars($prefix).'([\*]{1,2}|[\#])?([\:]([^\:]+)[\:]|[\<]([^\>]+)[\>])?(([\:][\=]))([\(\[\{]([a-z0-9-]+)[\}\]\)])?(\=)?([^'.$ender.'\:]+)([\:](round|floor|ceil|format|sqrt|pi)([\(]([^\)]+)[\)])?)?'.$ender.'#i', $altstr, $buffer);
+				preg_match_all('#'.\Morpheus::escape_preg_chars($prefix).'([\*]{1,2}|[\#])?([\:]([^\:]+)[\:]|[\<]([^\>]+)[\>])?(([\:][\=]))([\(\[\{]([a-z0-9-]+)[\}\]\)])?(\=)?([^'.$ender.'\:]+)([\:](round|floor|ceil|format|sqrt|pi)([\(]([^\)]+)[\)])?)?'.$ender.'#i', $altstr, $buffer);
 				break;
 			case 'default': default:
-				preg_match_all('#'.Morpheus::escape_preg_chars($prefix).'([\*]{1,2}|[\#])?([\:]([^\:]+)[\:]|[\<]([^\>/]+)[/]?[\>])?(([\.\%\@\!\~\\\\]|[>\&\/\^]\s?)?([a-z0-9_-]+([\[][a-z0-9_-]+[\]])*(\.length|\.toupper|\.tolower|\.ucfirst|\.typeof|\.class)?))([\|]([^'.Morpheus::escape_preg_chars($postfix).']*)|(([\!\=\^\$]?[\=]|[\<\>][\=]?|\<\>|\&\&)([^\?]+))?[\?]([^\:]*)[\:]([^'.$ender.']*))?'.$ender.'#i', $altstr, $buffer);
+				preg_match_all('#'.\Morpheus::escape_preg_chars($prefix).'([\*]{1,2}|[\#])?([\:]([^\:]+)[\:]|[\<]([^\>/]+)[/]?[\>])?(([\.\%\@\!\~\\\\]|[>\&\/\^]\s?)?([a-z0-9_-]+([\[][a-z0-9_-]+[\]])*(\.length|\.toupper|\.tolower|\.ucfirst|\.typeof|\.class)?))([\|]([^'.\Morpheus::escape_preg_chars($postfix).']*)|(([\!\=\^\$]?[\=]|[\<\>][\=]?|\<\>|\&\&)([^\?]+))?[\?]([^\:]*)[\:]([^'.$ender.']*))?'.$ender.'#i', $altstr, $buffer);
 		}
 		return (is_array($select) || !isset($buffer[$select]) ? $buffer : array_unique($buffer[$select]));
 	}
@@ -539,7 +539,10 @@ class Morpheus {
 	}
 	 
 	/*Delayed rendering*/
-	public function set_template($template=NULL){
+	public function set_template($template=NULL, $allow_inception=FALSE){
+		if(!($allow_inception === FALSE) && isset($this) && is_object($this->_template) && method_exists($this->_template, 'set_template')){
+			return $this->_template->set_template($template, $allow_inception);
+		}
 		if(isset($this)){
 			$this->_template = $template;
 		}
@@ -550,12 +553,12 @@ class Morpheus {
 	}
 	public function _old_load_template($src=NULL, $ext=TRUE){
 		if($ext === FALSE){ $ext = array(); }
-		elseif($ext === TRUE || (!is_string($ext) && !is_array($ext))){ $ext = Morpheus::get_file_extensions(); }
+		elseif($ext === TRUE || (!is_string($ext) && !is_array($ext))){ $ext = \Morpheus::get_file_extensions(); }
 		elseif(is_string($ext) && strlen($ext) > 0){ $ext = array($ext); }
 		if($template === NULL && isset($this->_src) ){ $src = $this->_src; }
 		foreach(array_merge(array(NULL), $ext) as $i=>$x){
-			if(file_exists( Morpheus::get_root("text/plain").$src.($x !== NULL ? '.'.$x : NULL) )){
-				return file_get_contents( Morpheus::get_root("text/plain").$src.($x !== NULL ? '.'.$x : NULL) );
+			if(file_exists( \Morpheus::get_root("text/plain").$src.($x !== NULL ? '.'.$x : NULL) )){
+				return file_get_contents( \Morpheus::get_root("text/plain").$src.($x !== NULL ? '.'.$x : NULL) );
 			}
 		}
 		return FALSE;
@@ -623,7 +626,7 @@ class Morpheus {
 	function inception($obj=NULL){
 		if($obj === NULL){
 			if(isset($this) && isset($this->_template) && is_object($this->_template)){ $obj =& $this->_template; }
-			else{ $obj = new Morpheus(); }
+			else{ $obj = new \Morpheus(); }
 		}
 		/*insert inception actions*/
 		return $obj;
