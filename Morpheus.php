@@ -44,7 +44,8 @@ class Morpheus {
 	}
 	function get_tag($name){ return $this->_tag[$name]; }
 	
-	function save($src=NULL, $allow_create=FALSE){
+	function save($src=NULL, $allow_create=FALSE, $allow_inception=FALSE){
+		if(!($allow_inception === FALSE) && isset($this) && is_object($this->_template) && method_exists($this->_template, 'save')){ return $this->_template->save($src, $allow_create, $allow_inception); }
 		/*fix; skips first variable*/ if(is_bool($src)){ $allow_create = $src; $src = NULL; }
 		if($src === NULL && isset($this)){ $src = $this->_src; }
 		$sub = (isset($this) && isset($this->_domain) ? $this->_domain : NULL);
