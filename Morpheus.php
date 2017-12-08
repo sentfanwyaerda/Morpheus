@@ -83,12 +83,12 @@ class Morpheus {
 		return $str;
 	}
 
-	function notify($code, $vars=array(), $line=NULL){
+	static function notify($code, $vars=array(), $line=NULL){
 		//*debug*/ print '<!-- Morpheus::notify '.preg_replace('#\s+#', ' ', print_r($code, TRUE).' '.print_r($vars, TRUE).' ('.print_r($line, TRUE)).') -->'."\n";
 		if(class_exists("Hades") ){ return \Hades::notify($code, $vars, $line); }
 		return FALSE;
 	}
-	function get_root($sub=NULL){
+	static function get_root($sub=NULL){
 		//*debug*/ print '<!-- Morpheus::get_root '.preg_replace('#\s+#', ' ', print_r($sub, TRUE)).' -->'."\n";
 		if(class_exists("Hades") && defined('HADES') && isset(${HADES}) ){ return \Hades::get_root($sub); }
 		/* add alias of the Heracles method */
@@ -120,7 +120,7 @@ class Morpheus {
 	}
 
 	/* Basic Template Parser */
-	public function basic_parse_str($str, $flags=array(), $prefix='{', $postfix='}', $parse=FALSE){
+	static function basic_parse_str($str, $flags=array(), $prefix='{', $postfix='}', $parse=FALSE){
 		/**/ $str = self::parse_include_str($str, $flags, $prefix, $postfix, $parse);
 		foreach($flags as $tag=>$value){
 			$str = str_replace($prefix.$tag.$postfix, (is_array($value) ? json_encode($value) : (string) $value), $str);
@@ -149,7 +149,7 @@ class Morpheus {
 		}
 		return $str;
 	}
-	private function _basic_parse_encapsule($trigger, $str, $id=NULL){
+	static function _basic_parse_encapsule($trigger, $str, $id=NULL){
 		switch(substr($trigger, 0, 1)){
 			case '*':
 				$anchor = (strlen($trigger) >1 ? '<a name="'.$id.'"></a>' : NULL);
@@ -184,12 +184,12 @@ class Morpheus {
 		/*fix*/ $str = (is_array($str) ? json_encode($str) : (string) $str);
 		return $str;
 	}
-	public function basic_parse($src, $flags=array()){
+	static function basic_parse($src, $flags=array()){
 		$prefix='{';
 		$postfix='}';
 		return \Morpheus::basic_parse_template($src, $flags, $prefix, $postfix, TRUE);
 	}
-	public function basic_parse_template($src, $flags=array(), $prefix='{', $postfix='}', $parse=FALSE){
+	static function basic_parse_template($src, $flags=array(), $prefix='{', $postfix='}', $parse=FALSE){
 		if(file_exists($src)){
 			$str = file_get_contents($src);
 			\Morpheus::notify(array(__METHOD__.'.exists', 200), array("src"=>str_replace(\Morpheus::get_root('text/plain'), NULL, $src)));
@@ -209,7 +209,7 @@ class Morpheus {
 		}
 		return \Morpheus::basic_parse_str($str, $flags, $prefix, $postfix, $parse);
 	}
-	public function escape_preg_chars($str, $qout=array(), $merge=TRUE){
+	static function escape_preg_chars($str, $qout=array(), $merge=TRUE){
 		if($merge !== FALSE){
 			$qout = array_merge(array('\\'), (is_array($qout) ? $qout : array($qout)), array('[',']','(',')','{','}','$','+','^','-','*'));
 			#/*debug*/ print_r($qout);
@@ -230,7 +230,7 @@ class Morpheus {
 	}
 	
 	/*experimental: Morpheus\LaTEX & Morpheus\markdown++ */
-	/*public*/ function parse_include_str($str, $flags=array(), $prefix='{', $postfix='}', $parse=FALSE){
+	static function parse_include_str($str, $flags=array(), $prefix='{', $postfix='}', $parse=FALSE){
 		if(preg_match_all("#[\\\\]i(nclude)?".\Morpheus::escape_preg_chars($prefix)."([^".\Morpheus::escape_preg_chars($postfix)."]+)".\Morpheus::escape_preg_chars($postfix)."#i", $str, $buffer)){
 			if(isset($buffer[0]) && is_array($buffer[0])){foreach($buffer[0] as $i=>$original){
 				$str = str_replace($buffer[0][$i],
