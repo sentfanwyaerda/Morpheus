@@ -4,7 +4,9 @@ namespace Morpheus;
 require_once(dirname(__FILE__).'/Morpheus.php');
 require_once(dirname(__FILE__).'/Morpheus-Markdown.php'); //required for ::send( $AltBody )
 if(!class_exists('PHPMailer')){
-	require_once(dirname(dirname(__FILE__)).'/PHPMailer/PHPMailerAutoload.php');
+	require_once(dirname(dirname(__FILE__)).'/PHPMailer/src/Exception.php');
+	require_once(dirname(dirname(__FILE__)).'/PHPMailer/src/PHPMailer.php');
+	require_once(dirname(dirname(__FILE__)).'/PHPMailer/src/SMTP.php');
 }
 
 class Mail_Message extends \Morpheus {
