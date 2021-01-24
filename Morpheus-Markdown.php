@@ -35,64 +35,83 @@ class Markdown extends \Morpheus {
 	}
 	
 	function _encode_order(){ return array_reverse(self::_decode_order()); }
-	function _decode_order(){ return array('clean','bold','italic','strikethrough', 'inline_code', 'syntax_highlighting', /*'underline',*/ 'link', 'image', 'headers','horizontal_rule', 'blockquote', 'lists', 'task_done', 'table', 'p_br','clean'); }
+	function _decode_order(){ return array('clean',
+        'bold',
+        'italic',
+        'strikethrough',
+        'form_marked',
+        'form_simplified',
+        'form_lists',
+        'inline_code',
+        'syntax_highlighting',
+        /*'underline',*/
+        'link',
+        'image',
+        'headers',
+        'horizontal_rule',
+        'blockquote',
+        'lists',
+        'task_done',
+        'table',
+        'p_br',
+        'clean'); }
 	
 	/* Encode: HTML to Markdown*/
-	function encode($html=FALSE){
+	function encode($html=FALSE, $set=array()){
 		if($html === FALSE && isset($this)){ $html = $this->_template; }
 		$md = $html;
 		foreach(self::_encode_order() as $i=>$el){
 			$cur = 'encode_'.strtolower($el);
-			if(method_exists($this, $cur)){ $md = $this->$cur($md); }
+			if(method_exists($this, $cur)){ $md = $this->$cur($md, $set); }
 		}
 		return $md;
 	}
 	
 	/* Decode: Markdown to HTML */
-	function decode($md=FALSE){
+	function decode($md=FALSE, $set=array()){
 		if($md === FALSE && isset($this)){ $md = $this->_template; }
 		$html = $md;
 		foreach(self::_decode_order() as $i=>$el){
 			$cur = 'decode_'.strtolower($el);
-			if(method_exists($this, $cur)){ $html = $this->$cur($html); }
+			if(method_exists($this, $cur)){ $html = $this->$cur($html, $set); }
 		}
 		return $html;
 	}
 	
 	/* ELEMENTS */
-	function encode_bold($str=NULL){ return self::_encode_tag_only($str, 'strong', '**', '**', array('b','strong') ); }
-	function decode_bold($str=NULL){ return self::_decode_tag_only($str, 'strong', '**', '**', array('b','strong') ); }
+	function encode_bold($str=NULL, $set=array()){ return self::_encode_tag_only($str, 'strong', '**', '**', array('b','strong') ); }
+	function decode_bold($str=NULL, $set=array()){ return self::_decode_tag_only($str, 'strong', '**', '**', array('b','strong') ); }
 	
-	function encode_italic($str=NULL){ return self::_encode_tag_only($str, 'em', '*', '*', array('i','em') ); }
-	function decode_italic($str=NULL){ return self::_decode_tag_only($str, 'em', '*', '*', array('i','em') ); }
+	function encode_italic($str=NULL, $set=array()){ return self::_encode_tag_only($str, 'em', '*', '*', array('i','em') ); }
+	function decode_italic($str=NULL, $set=array()){ return self::_decode_tag_only($str, 'em', '*', '*', array('i','em') ); }
 	
-	function encode_strikethrough($str=NULL){ return self::_encode_tag_only($str, 's', '~~', '~~' ); }
-	function decode_strikethrough($str=NULL){ return self::_decode_tag_only($str, 's', '~~', '~~' ); }
+	function encode_strikethrough($str=NULL, $set=array()){ return self::_encode_tag_only($str, 's', '~~', '~~' ); }
+	function decode_strikethrough($str=NULL, $set=array()){ return self::_decode_tag_only($str, 's', '~~', '~~' ); }
 	
-	function encode_underline($str=NULL){ return self::_encode_tag_only($str, 'u', '_', '_'); }
-	function decode_underline($str=NULL){ return self::_decode_tag_only($str, 'u', '_', '_'); }
+	function encode_underline($str=NULL, $set=array()){ return self::_encode_tag_only($str, 'u', '_', '_'); }
+	function decode_underline($str=NULL, $set=array()){ return self::_decode_tag_only($str, 'u', '_', '_'); }
 
-	function encode_link($str=NULL){
+	function encode_link($str=NULL, $set=array()){
 		$str = preg_replace('#\<a href\=\"([^\"]+)\"\>([^\<]+)\<\/a\>#', '[\\2](\\1)', $str);
 		return $str;
 	}
-	function decode_link($str=NULL){
+	function decode_link($str=NULL, $set=array()){
 		$str = preg_replace('#(^|[^\!])[\[]([^\]]+)[\]][\(]([^ \)]+)\s([\"]([^\"\)]+)[\"])[\)]#', '\\1<a href="\\3" title="\\5">\\2</a>', $str);
 		$str = preg_replace('#(^|[^\!])[\[]([^\]]+)[\]][\(]([^\)]+)[\)]#', '\\1<a href="\\3">\\2</a>', $str);
 		$str = preg_replace('#\<((http[s]?\:\/\/|mailto\:)([^ \>]+))\>#', '<a href="\\1">\\3</a>', $str);
 		return $str;
 	}
 	
-	function encode_image($str=NULL){
+	function encode_image($str=NULL, $set=array()){
 		$str = preg_replace('#\<img src\=\"([^\"]+)\" title=\"([^\"]+)\"\s*\/\>#', '![\\2](\\1)', $str);
 		return $str;
 	}
-	function decode_image($str=NULL){
+	function decode_image($str=NULL, $set=array()){
 		$str = preg_replace('#[\!][\[]([^\]]+)[\]][\(]([^\)]+)[\)]#', '<img src="\\2" title="\\1" \/>', $str);
 		return $str;
 	}
 
-	function encode_headers($str=NULL){
+	function encode_headers($str=NULL, $set=array()){
 		for($i=6;$i>=1;$i--){
 			$str = str_replace('</h'.$i.'>', '¤', $str);
 			if(preg_match_all('#(^\s*|\n\s*)\<h'.$i.'\>([^¤]+)[¤](\s*)#', $str, $buffer) > 0){
@@ -104,7 +123,7 @@ class Markdown extends \Morpheus {
 		}
 		return $str;
 	}
-	function decode_headers($str=NULL){
+	function decode_headers($str=NULL, $set=array()){
 		if(preg_match_all('#(^|\n)([\#]{1,6})\s?([^\n]+)#', $str, $buffer) > 0){
 			foreach($buffer[2] as $i=>$h){
 				$str = str_replace($buffer[0][$i], $buffer[1][$i].'<h'.strlen($h).'>'.$buffer[3][$i].'</h'.strlen($h).'>', $str);
@@ -120,23 +139,23 @@ class Markdown extends \Morpheus {
 		return $str;
 	}
 	
-	function encode_horizontal_rule($str=NULL){
+	function encode_horizontal_rule($str=NULL, $set=array()){
 		$str = preg_replace('#(\s*)<hr/>(\s*)#i', '\\1----------\\2', $str);
 		return $str;
 	}
-	function decode_horizontal_rule($str=NULL){
+	function decode_horizontal_rule($str=NULL, $set=array()){
 		$str = preg_replace('#(^|\n)([\*][ ]?[\*][ ]?[\*][\* ]*)(\n|$)#', '\\1<hr/>\\3', $str);
 		$str = preg_replace('#(^|\n)([-][ ]?[-][ ]?[-][ -]*)(\n|$)#', '\\1<hr/>\\3', $str);
 		return $str;
 	}
 	
-	function encode_inline_code($str=NULL){ return self::_encode_tag_only($str, 'code', '`', '`' ); }
-	function decode_inline_code($str=NULL){ return self::_decode_tag_only($str, 'code', '`', '`' ); }
+	function encode_inline_code($str=NULL, $set=array()){ return self::_encode_tag_only($str, 'code', '`', '`' ); }
+	function decode_inline_code($str=NULL, $set=array()){ return self::_decode_tag_only($str, 'code', '`', '`' ); }
 	
-	function encode_syntax_highlighting($str=NULL){
+	function encode_syntax_highlighting($str=NULL, $set=array()){
 		return $str;
 	}
-	function decode_syntax_highlighting($str=NULL){
+	function decode_syntax_highlighting($str=NULL, $set=array()){
 		$str = self::_decode_prefixed_line($str, '[ ]{4}', NULL, 'pre');
 		$str = str_replace('```', '¤', $str);
 		if(preg_match_all('#¤([^\n¤]+)?\n([^¤]+)¤#', $str, $buffer) > 0){
@@ -148,11 +167,11 @@ class Markdown extends \Morpheus {
 		return $str;
 	}
 	
-	function encode_blockquote($str=NULL){ return $str; }
-	function decode_blockquote($str=NULL){ return self::_decode_prefixed_line($str, '[\>]\s', NULL, 'blockquote'); }
+	function encode_blockquote($str=NULL, $set=array()){ return $str; }
+	function decode_blockquote($str=NULL, $set=array()){ return self::_decode_prefixed_line($str, '[\>]\s', NULL, 'blockquote'); }
 	
-	function encode_table($str=NULL){ return $str; }
-	function decode_table($str=NULL){
+	function encode_table($str=NULL, $set=array()){ return $str; }
+	function decode_table($str=NULL, $set=array()){
 		$tnr = $tstr = $hdr = array();
 		$lines = explode("\n", $str);
 		foreach($lines as $i=>$line){
@@ -216,15 +235,15 @@ class Markdown extends \Morpheus {
 		return $align;
 	}
 	
-	function encode_lists($str=NULL){ return $str; }
-	function decode_lists($str=NULL){
+	function encode_lists($str=NULL, $set=array()){ return $str; }
+	function decode_lists($str=NULL, $set=array()){
 		$str = self::_decode_prefixed_line($str, '[\*\-\+]\s', 'li', 'ul');
 		$str = self::_decode_prefixed_line($str, '[0-9]+[\.]\s', 'li', 'ol');
 		return $str;
 	}
 	
-	function encode_task_done($str=NULL){ return $str; }
-	function decode_task_done($str=NULL){
+	function encode_task_done($str=NULL, $set=array()){ return $str; }
+	function decode_task_done($str=NULL, $set=array()){
 		//y$str = str_replace('@done', '<i class="fa fa-fw fa-check text-success"></i>', $str);
 		return $str;
 		
@@ -244,7 +263,7 @@ class Markdown extends \Morpheus {
 		return $str;
 	}
 	
-	function encode_p_br($str=NULL){
+	function encode_p_br($str=NULL, $set=array()){
 		$str = str_replace('</p>', '¤', $str);
 		if(preg_match_all('#(^|\s+)\<p\>([^¤]+)¤(\s+|$)#i', $str, $buffer) > 0){
 			foreach($buffer[2] as $i=>$line){
@@ -259,13 +278,13 @@ class Markdown extends \Morpheus {
 		$str = str_replace('¤', '</p>', $str);
 		return $str;
 	}
-	function decode_p_br($str=NULL){
+	function decode_p_br($str=NULL, $set=array()){
 		$lines = explode("\n", $str); $open = TRUE;
 		foreach($lines as $i=>$line){
 			if(preg_match('#^\s*$#', $line)){ $open = TRUE; }
 			else{
 				preg_match('#^(\s*)([\<]([a-z0-9]+)([^\>]+)?[\>])?#', $line, $buffer);
-				switch(strtolower($buffer[3])){
+				if(isset($buffer[3])){switch(strtolower($buffer[3])){
 					case 'h1': case 'h2': case 'h3': case 'h4': case 'h5': case 'h6': case 'hr': case 'ol': case 'ul': case 'li': case 'blockquote': case 'pre': case 'table': case 'tr': case 'th': case 'td': case 'style': case 'script': break;
 					default: //!isset($lines[$i-1]) || preg_match('#^\s*$#', $lines[$i-1]) ||  
 						//&& (!isset($lines[$i+1]) || preg_match('#^\s*$#', $lines[$i+1]))
@@ -273,12 +292,151 @@ class Markdown extends \Morpheus {
 							$lines[$i] = $buffer[1].($open === TRUE ? '<p>' : NULL).preg_replace('#^'.$buffer[1].'#', '', $lines[$i]).((!isset($lines[$i+1]) || preg_match('#^\s*$#', $lines[$i+1])) ? '</p>' : '<br/>');
 							$open = (!((!isset($lines[$i+1]) || preg_match('#^\s*$#', $lines[$i+1]))) ? NULL : FALSE);
 						}
-				}
+				}}
 			}
 		}
 		$str = implode("\n", $lines);
+		/*fix*/ $str = str_replace('<br/></p>', '</p>', $str);
 		return $str;
 	}
+	/* Markdown FORM */
+	
+	function encode_form_marked($str=NULL, $set=array()){ return $str; }
+    function decode_form_marked($md=NULL, $set=array()){
+      //*debug*/ print_r($set);
+      //syntax of marked-forms https://www.npmjs.com/package/marked-forms
+      /**************************************
+       * [text ?input?](name)
+       * [Provide a Naem ??]()
+       * [Different label ??]()
+       * [Choos one ?select?](nme)
+       * - option 1 "val1"
+       * - option 2 "val2"
+       * [?checklist?](name)
+       * - check1
+       * - check2
+       * [?radiolist?M](name)
+       * - check1
+       * - check2
+       * [Label Text ??H](foo)
+       * [?submit? Submit text](- "class1 class2")
+       **************************************/
+      $buttontypes = 'submit|button|reset';
+      $inputtypes = 'input|text|phone|url|email|password';
+      preg_match_all('#\[([^\]\?]*)\?(|'.$inputtypes.'|'.$buttontypes.'|textarea|select|checklist|radiolist)\?(|\*|M|M\*|H)( [^\]\n]+)?\]\(([a-z-]+)?[ ]?(\"[^\"]+\")?\)((\n\- [^\n]+)*)#i', $md, $buffer);
+      //*debug*/ print 'marked-forms: '; print_r($buffer);
+      foreach($buffer[0] as $i=>$item){
+        $mfstr = NULL;
+        $mode = strtolower($buffer[2][$i]); /*fix*/ if(in_array($mode, array('input','',NULL))){ $mode = 'text'; }
+        $name = (isset($buffer[5][$i]) && $buffer[5][$i] != "-" ? $buffer[5][$i] : preg_replace('#[^a-z0-9]#', '-', strtolower(trim($buffer[1][$i]).trim($buffer[4][$i]))) );
+        $value = (isset($set[$name]) ? $set[$name] : NULL);
+        //*debug*/ print '<pre>??: '.$name." = ".$value.'<pre>';
+        if(strlen($buffer[1][$i])>0 && !in_array($mode, explode('|', $buttontypes))){
+          $mfstr .= '<label for="'.$name.'">'.$buffer[1][$i].'</label>';
+        }
+        switch($mode){
+          case 'checklist': case 'radiolist':
+            $mfstr .= 'LIST';
+            break;
+          case 'select':
+            $mfstr .= '<select id="'.$name.'" name="'.$name.'"></select>';
+            break;
+          case 'textarea':
+            $mfstr .= '<textarea id="'.$name.'" name="'.$name.'">'.$value.'</textarea>';
+            break;
+          default:
+            $mfstr .= '<input type="'.(in_array($mode, explode('|', $inputtypes.'|'.$buttontypes)) ?  $mode : 'text').'" id="'.$name.'" name="'.$name.'" value="'.(in_array($mode, explode('|', $buttontypes)) ? trim($buffer[4][$i]) : $value).'"'.(strlen($buffer[6][$i]) > 3 ? ' class="'.substr($buffer[6][$i],1,-1).'"' : NULL).' />';
+        }
+        if(strlen($buffer[4][$i])>0 && !in_array($mode, explode('|', $buttontypes))){ $mfstr .= '<label for="'.$name.'">'.$buffer[4][$i].'</label>'; }
+        //$mfstr .= "\n";
+        $md = str_replace($buffer[0][$i], $mfstr, $md);
+      }
+      return $md;
+    }
+	function encode_form_simplified($str=NULL, $set=array()){ return $str; }
+    function decode_form_simplified($md=NULL, $set=array()){
+      //syntax of (..)
+      /**************************************
+       * Naam*: ________
+       * Email address: email*=________(email)
+       * Choose One: {val1, (val2)}
+       **************************************/
+      preg_match_all('#(^|\n)([^:\n]+)[\:]\s+([a-z]+[\[]?[\]]?[\*]?\=)?([\_]{3,}|\{[^\}\n]+\})(\(([^\)\n]+)\))?([^\n]*)#i', $md, $buffer);
+      //*debug*/ print 'inline form: '; print_r($buffer);
+      foreach($buffer[2] as $i=>$label){
+        $required = FALSE;
+        $name = (isset($buffer[3][$i]) && substr($buffer[3][$i],-1) == '=' ? substr($buffer[3][$i],0,-1) : str_replace(' ','-', strtolower(trim($label))) );
+        if(substr($label, -1) == '*'){ $required = TRUE; $label = substr($label, 0, -1).'<span class="required">*</span>'; }
+        if(substr($name, -1) == '*'){ $name = substr($name, 0, -1); if($required !== TRUE){ $label = $label.'<span class="required">*</span>';} $required = TRUE; }
+        $multiple = FALSE; if(substr($name, -2) == '[]'){ $name = substr($name, 0, -2); $multiple = TRUE; }
+        $value = (isset($set[$name]) ? $set[$name] : NULL);
+        //*debug*/ print '<pre>__: '.$name." = ".$value.'<pre>';
+        $patch = "\n".'<label for="'.$name.'"><span class="label">'.$label.'</span> ';
+        switch(substr($buffer[4][$i],0,1)){
+          case '{':
+            $slist = (isset($set[$name.'-options']) && is_array($set[$name.'-options']) ? $set[$name.'-options'] : explode(',', substr($buffer[4][$i],1,-1)) );
+            $patch .= '<select id="'.$name.'" name="'.$name.'">'; //'.($required == TRUE ? ' required="REQUIRED"' : NULL).'
+            foreach($slist as $j=>$sitem){
+              /*fix*/ $sitem = trim($sitem);
+              $selected = FALSE; if(substr($sitem,0,1)=='(' && substr($sitem,-1)==')'){ $selected = TRUE; $sitem = substr($sitem, 1, -1); }
+              preg_match('#^([a-z]+\=)?(.*)$#i', $sitem, $sbuf);
+              $ovalue = (isset($sbuf[1]) && substr($sbuf[1],-1)=='=' ? substr($sbuf[1],0,-1) : $sbuf[2]);
+              if(isset($set[$name])){ $selected = FALSE; if($set[$name] == $ovalue){ $selected = TRUE; }}
+              $patch .= '<option value="'.$ovalue.'"'.($selected ? ' selected="SELECTED"' : NULL).'>'.$sbuf[2].'</option>';
+            }
+            $patch .= '</select>';
+            break;
+          case '_': default:
+            $patch .= '<input type="'.(isset($buffer[6][$i]) && strlen($buffer[6][$i]) > 0 ? $buffer[6][$i]  : 'text').'" id="'.$name.'" name="'.$name.'" value="'.$value.'"'.($required == TRUE ? ' required="REQUIRED"' : NULL).($multiple == TRUE ? ' multiple="MULTIPLE"' : NULL).'/>';
+        }
+        $patch .= '</label><br/>'."\n";
+        $md = str_replace($buffer[0][$i], $patch, $md);
+      }
+      return $md;
+    }
+	function encode_form_lists($str=NULL, $set=array()){ return $str; }
+    function decode_form_lists($md=NULL, $set=array()){
+      //syntax of (..)
+      /**************************************
+       * - [ ] Option 1
+       * - [*] Option 2
+       * - option=[x](true) Option selected
+       * - ( ) Option a
+       **************************************/
+      $pattern = '(^|\n)\- ([a-z]+=)?(\[|\()(| |x|\*)(\]|\))(\([^\)\n]+\))? ([^\n]+)';
+      preg_match_all('#('.$pattern.'){1,}#i', $md, $buffer);
+      //*debug*/ print 'inline checkbox and radio: '; print_r($buffer);
+      foreach($buffer[0] as $i=>$group){
+        $mode = ($buffer[4][$i] == '[' && $buffer[6][$i] == ']' ? 'checkbox' : ($buffer[4][$i] == '(' && $buffer[6][$i] == ')' ? 'radio' : NULL) );
+        $setstr = NULL;
+        if($mode !== NULL){
+          $wellformed = TRUE;
+          $name = $mode.'-'.$i;
+          preg_match_all('#'.$pattern.'#', $group, $b);
+          //*debug*/ print $i.' ('.$mode.' , '.$name.'): '; print_r($b);
+          foreach($b[0] as $j=>$raw){
+            if(strlen($b[2][$j]) > 1){ $name = substr($b[2][$j],0,-1); }
+            switch($mode){
+              case 'checkbox': if(!($b[3][$j] == '[' && $b[5][$j] == ']')){ $wellformed = FALSE; } break;
+              case 'radio': if(!($b[3][$j] == '(' && $b[5][$j] == ')')){ $wellformed = FALSE; } break;
+            }
+            $value = (strlen($b[6][$j]) > 2 ? substr($b[6][$j],1,-1) : $b[7][$j]);
+            $label = $b[7][$j];
+            $setstr .= '<li class="'.$mode.'"><input id="'.$name.'-'.$j.'" type="'.$mode.'" ';
+            $setstr .= 'name="'.$name.(count($b[0])>1 && $mode == 'checkbox' ? '[]' : NULL).'" ';
+            $setstr .= 'value="'.$value.'"';
+            //$setstr .= (in_array($b[4][$j], array('x','*')) ? ' checked="CHECKED"' : NULL);
+            $setstr .= ((isset($set[$name]) ? (is_array($set[$name]) ? in_array($value, $set[$name]) : $set[$name] == $value) : in_array($b[4][$j], array('x','*')) ) ? ' checked="CHECKED"' : NULL);
+            $setstr .= ' /><label class="'.$mode.'" for="'.$name.'-'.$j.'">'.$label.'</label></li>';
+          }
+          if($wellformed === TRUE){
+            $setstr = '<ul id="'.$name.'" class="'.$mode.'list">'.$setstr.'</ul>';
+            $md = str_replace($group, $setstr, $md);
+          }
+        }
+      }
+      return $md;
+    }
 	
 	/* Helper Functions */
 	function _encode_tag_only($str=NULL, $tag='', $prefix='', $postfix='', $options=array(), $newline=FALSE){
@@ -304,7 +462,7 @@ class Markdown extends \Morpheus {
 		return $str;
 	}*/
 	function _decode_prefixed_line($str=NULL, $prefix=NULL, $tag=NULL, $group=NULL){
-		$lines = explode("\n", $str); $depth = 0;
+		$lines = explode("\n", $str); $depth = $spacer = 0;
 		foreach($lines as $i=>$line){
 			if(preg_match('#^(\s*)'.$prefix.'(.*)(\s*)$#', $line, $buffer)){
 				/*fix*/ $b1 = str_replace(str_repeat(' ', 3), "\t", $buffer[1]);
@@ -324,7 +482,7 @@ class Markdown extends \Morpheus {
 				}
 			}
 			else{
-				$lines[$i-1] = preg_replace('#^(.*)(\s*)$#', '\\1'.str_repeat('</'.$group.'>', ($depth - $spacer)).'\\2', $lines[$i-1]);
+				if(isset($lines[$i-1])){ $lines[$i-1] = preg_replace('#^(.*)(\s*)$#', '\\1'.str_repeat('</'.$group.'>', ($depth - $spacer)).'\\2', $lines[$i-1]); }
 				$depth = 0;
 			}
 		}
@@ -333,18 +491,18 @@ class Markdown extends \Morpheus {
 		return $str;
 	}
 	
-	function strip_all_html($str=NULL){
+	function strip_all_html($str=NULL, $set=array()){
 		$str = preg_replace('#\<[\/]?[^\>]+\>#i', '', $str);
 		return $str;
 	}
-	function encode_clean($str=NULL){
+	function encode_clean($str=NULL, $set=array()){
 		return $str;
 		return str_replace(array('�',"\r",'¤'), array('','',''), $str);
 	}
 	
 	/*OTHER*/
 	function str(){ return $this->get_template(); }
-	function TOC($str=NULL){
+	function TOC($str=NULL, $set=array()){
 		$db = self::section_database($str);
 		//return '<pre>'.print_r($db, TRUE).'</pre>';
 		$toc_html = NULL; $toc_md = NULL; $depth = 0; $spacer = 0;
@@ -366,7 +524,7 @@ class Markdown extends \Morpheus {
 		return self::decode("\n".$toc_md."\n");
 		//return $toc_html;
 	}
-	function section_database($str=NULL){
+	function section_database($str=NULL, $set=array()){
 		$db = array(); $line = 0; $prev = FALSE;
 		if($str === NULL && isset($this)){
 			$str = $this->get_template();
@@ -385,5 +543,14 @@ class Markdown extends \Morpheus {
 		if($prev !== FALSE && isset($db[$prev])){ $db[$prev]['end'] = count($buf)-1; $prev = FALSE; }
 		return $db;
 	}
+}
+
+function Markdown_decode($str, $set=array()){
+    $morph = new \Morpheus\Markdown();
+    return $morph->decode($str, $set);
+}
+function Markdown_encode($str, $set=array()){
+    $morph = new \Morpheus\Markdown();
+    return $morph->encode($str, $set);
 }
 ?>
