@@ -55,6 +55,7 @@ class Markdown extends \Morpheus {
         'task_done',
         'table',
         'p_br',
+        'formification',
         'clean'); }
 	
 	/* Encode: HTML to Markdown*/
@@ -284,9 +285,9 @@ class Markdown extends \Morpheus {
 		foreach($lines as $i=>$line){
 			if(preg_match('#^\s*$#', $line)){ $open = TRUE; }
 			else{
-				preg_match('#^(\s*)([\<]([a-z0-9]+)([^\>]+)?[\>])?#', $line, $buffer);
+				preg_match('#^(\s*)([\<][\/]?([a-z0-9]+)([^\>]+)?[\>])?#', $line, $buffer);
 				if(isset($buffer[3])){switch(strtolower($buffer[3])){
-					case 'h1': case 'h2': case 'h3': case 'h4': case 'h5': case 'h6': case 'hr': case 'ol': case 'ul': case 'li': case 'blockquote': case 'pre': case 'table': case 'tr': case 'th': case 'td': case 'style': case 'script': break;
+					case 'h1': case 'h2': case 'h3': case 'h4': case 'h5': case 'h6': case 'hr': case 'ol': case 'ul': case 'li': case 'blockquote': case 'pre': case 'table': case 'tr': case 'th': case 'td': case 'style': case 'script': case 'form': case 'input': case 'select': case 'textarea': break;
 					default: //!isset($lines[$i-1]) || preg_match('#^\s*$#', $lines[$i-1]) ||  
 						//&& (!isset($lines[$i+1]) || preg_match('#^\s*$#', $lines[$i+1]))
 						if(!($open === FALSE) ){
@@ -438,14 +439,26 @@ class Markdown extends \Morpheus {
       }
       return $md;
     }
+    function encode_formification($str=NULL, $set=array()){ return $str; }
+    function decode_formification($str=NULL, $set=array()){
+        if(preg_match('#\<(input|select|textarea)(\s[^\>]+)?\>#i', $str)){
+            if(!preg_match('#\<(form)(\s[^\>]+)?\>#i', $str)){
+                $attr = array('action'=>NULL,'accept-charset'=>NULL,'autocomplete'=>array('on','off'),'enctype'=>array('application/x-www-form-urlencoded','multipart/form-data','text/plain'),'name'=>NULL,'novalidate'=>array('novalidate'),'method'=>array('post','get'),'rel'=>array('external','help','license','next','nofollow','noopener','noreferrer','opener','prev','search'),'target'=>array('_blank','_self','_parent','_top')); $flags = NULL;
+                foreach($attr as $n=>$opt){
+                    if(isset($set[$n]) || in_array($n, array('method'))){ $flags .= ' '.$n.'="'.(isset($set[$n]) ? (is_array($opt) ? (in_array(strtolower($set[$n]), $opt) ? $set[$n] : reset($opt)) : $set[$n] ) : (is_array($opt) ? reset($opt) : NULL)).'"'; }
+                }
+                $str = '<form'.$flags.'>'."\n".$str."\n".'</form>';
+            }
+        }
+        return $str;
+    }
     /* qTranslate */
     function encode_qTranslate($str=NULL, $set=array()){ return $str; }
     function decode_qTranslate($str=NULL, $set=array()){
         if(class_exists('\JSONplus\qTranslate')){
-    print 'qTranslate';
             $qT = new \JSONplus\qTranslate();
             $qT->import($str, $set);
-            $str = (string) $qT;
+            $str = $qT->process();
         }
         return $str;
     }
