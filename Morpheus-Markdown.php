@@ -36,6 +36,7 @@ class Markdown extends \Morpheus {
 	
 	function _encode_order(){ return array_reverse(self::_decode_order()); }
 	function _decode_order(){ return array('clean',
+        'qTranslate',
         'bold',
         'italic',
         'strikethrough',
@@ -436,6 +437,17 @@ class Markdown extends \Morpheus {
         }
       }
       return $md;
+    }
+    /* qTranslate */
+    function encode_qTranslate($str=NULL, $set=array()){ return $str; }
+    function decode_qTranslate($str=NULL, $set=array()){
+        if(class_exists('\JSONplus\qTranslate')){
+    print 'qTranslate';
+            $qT = new \JSONplus\qTranslate();
+            $qT->import($str, $set);
+            $str = (string) $qT;
+        }
+        return $str;
     }
 	
 	/* Helper Functions */
