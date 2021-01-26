@@ -76,6 +76,7 @@ class Markdown extends \Morpheus {
 		foreach(self::_decode_order() as $i=>$el){
 			$cur = 'decode_'.strtolower($el);
 			if(method_exists($this, $cur)){ $html = $this->$cur($html, $set); }
+			//*debug*/ print '<!-- '.$cur.' -->'."\n".$html."\n";
 		}
 		return $html;
 	}
@@ -282,19 +283,27 @@ class Markdown extends \Morpheus {
 	}
 	function decode_p_br($str=NULL, $set=array()){
 		$lines = explode("\n", $str); $open = TRUE;
+		if(count($lines) <= 1){ return $str; }
+		$ignorstr = '!--|h1|h2|h3|h4|h5|h6|hr|ol|ul|li|blockquote|pre|table|tr|th|td|style|script|form|input|select|textarea'; $ignorable = explode('|', $ignorstr);
 		foreach($lines as $i=>$line){
 			if(preg_match('#^\s*$#', $line)){ $open = TRUE; }
 			else{
-				preg_match('#^(\s*)([\<][\/]?([a-z0-9]+)([^\>]+)?[\>])?#', $line, $buffer);
-				if(isset($buffer[3])){switch(strtolower($buffer[3])){
-					case 'h1': case 'h2': case 'h3': case 'h4': case 'h5': case 'h6': case 'hr': case 'ol': case 'ul': case 'li': case 'blockquote': case 'pre': case 'table': case 'tr': case 'th': case 'td': case 'style': case 'script': case 'form': case 'input': case 'select': case 'textarea': break;
-					default: //!isset($lines[$i-1]) || preg_match('#^\s*$#', $lines[$i-1]) ||  
+                $close = (!isset($lines[$i+1]) || preg_match('#^\s*$#', $lines[$i+1]) || preg_match('#^\s*\<[/]?('.$ignorstr.')#', $lines[$i+1]));
+				preg_match('#^(\s*)([\<][\/]?([a-z0-9]+|!--)([^\>]+)?[\>])?#', $line, $buffer);
+				if(isset($buffer[3])){
+                    if(!in_array(strtolower($buffer[3]), $ignorable)){
+                        //!isset($lines[$i-1]) || preg_match('#^\s*$#', $lines[$i-1]) ||  
 						//&& (!isset($lines[$i+1]) || preg_match('#^\s*$#', $lines[$i+1]))
 						if(!($open === FALSE) ){
-							$lines[$i] = $buffer[1].($open === TRUE ? '<p>' : NULL).preg_replace('#^'.$buffer[1].'#', '', $lines[$i]).((!isset($lines[$i+1]) || preg_match('#^\s*$#', $lines[$i+1])) ? '</p>' : '<br/>');
+							$lines[$i] = $buffer[1].($open === TRUE ? '<p>' : NULL).preg_replace('#^'.$buffer[1].'#', '', $lines[$i]).($close ? '</p>' : '<br/>');
 							$open = (!((!isset($lines[$i+1]) || preg_match('#^\s*$#', $lines[$i+1]))) ? NULL : FALSE);
 						}
-				}}
+                    }
+				}
+				else{
+                    $lines[$i] = ($open === TRUE ? '<p>' : NULL).$lines[$i].($close ? '</p>' : '<br/>');
+                    $open = (!((!isset($lines[$i+1]) || preg_match('#^\s*$#', $lines[$i+1]))) ? NULL : FALSE);
+				}
 			}
 		}
 		$str = implode("\n", $lines);
@@ -370,6 +379,7 @@ class Markdown extends \Morpheus {
         $name = (isset($buffer[3][$i]) && substr($buffer[3][$i],-1) == '=' ? substr($buffer[3][$i],0,-1) : str_replace(' ','-', strtolower(trim($label))) );
         if(substr($label, -1) == '*'){ $required = TRUE; $label = substr($label, 0, -1).'<span class="required">*</span>'; }
         if(substr($name, -1) == '*'){ $name = substr($name, 0, -1); if($required !== TRUE){ $label = $label.'<span class="required">*</span>';} $required = TRUE; }
+        $label = $label.'<span class="spacer">:</span>';
         $multiple = FALSE; if(substr($name, -2) == '[]'){ $name = substr($name, 0, -2); $multiple = TRUE; }
         $value = (isset($set[$name]) ? $set[$name] : NULL);
         //*debug*/ print '<pre>__: '.$name." = ".$value.'<pre>';
@@ -391,7 +401,7 @@ class Markdown extends \Morpheus {
           case '_': default:
             $patch .= '<input type="'.(isset($buffer[6][$i]) && strlen($buffer[6][$i]) > 0 ? $buffer[6][$i]  : 'text').'" id="'.$name.'" name="'.$name.'" value="'.$value.'"'.($required == TRUE ? ' required="REQUIRED"' : NULL).($multiple == TRUE ? ' multiple="MULTIPLE"' : NULL).'/>';
         }
-        $patch .= '</label><br/>'."\n";
+        $patch .= '</label>'; //."<br/>\n";
         $md = str_replace($buffer[0][$i], $patch, $md);
       }
       return $md;
@@ -424,7 +434,7 @@ class Markdown extends \Morpheus {
             }
             $value = (strlen($b[6][$j]) > 2 ? substr($b[6][$j],1,-1) : $b[7][$j]);
             $label = $b[7][$j];
-            $setstr .= '<li class="'.$mode.'"><input id="'.$name.'-'.$j.'" type="'.$mode.'" ';
+            $setstr .= $b[1][$j].'<li class="'.$mode.'"><input id="'.$name.'-'.$j.'" type="'.$mode.'" ';
             $setstr .= 'name="'.$name.(count($b[0])>1 && $mode == 'checkbox' ? '[]' : NULL).'" ';
             $setstr .= 'value="'.$value.'"';
             //$setstr .= (in_array($b[4][$j], array('x','*')) ? ' checked="CHECKED"' : NULL);
@@ -432,7 +442,7 @@ class Markdown extends \Morpheus {
             $setstr .= ' /><label class="'.$mode.'" for="'.$name.'-'.$j.'">'.$label.'</label></li>';
           }
           if($wellformed === TRUE){
-            $setstr = '<ul id="'.$name.'" class="'.$mode.'list">'.$setstr.'</ul>';
+            $setstr = "\n".'<ul id="'.$name.'" class="'.$mode.'list">'.$setstr."\n".'</ul>';
             $md = str_replace($group, $setstr, $md);
           }
         }
@@ -441,13 +451,15 @@ class Markdown extends \Morpheus {
     }
     function encode_formification($str=NULL, $set=array()){ return $str; }
     function decode_formification($str=NULL, $set=array()){
+        $submitter = NULL;
         if(preg_match('#\<(input|select|textarea)(\s[^\>]+)?\>#i', $str)){
             if(!preg_match('#\<(form)(\s[^\>]+)?\>#i', $str)){
                 $attr = array('action'=>NULL,'accept-charset'=>NULL,'autocomplete'=>array('on','off'),'enctype'=>array('application/x-www-form-urlencoded','multipart/form-data','text/plain'),'name'=>NULL,'novalidate'=>array('novalidate'),'method'=>array('post','get'),'rel'=>array('external','help','license','next','nofollow','noopener','noreferrer','opener','prev','search'),'target'=>array('_blank','_self','_parent','_top')); $flags = NULL;
                 foreach($attr as $n=>$opt){
                     if(isset($set[$n]) || in_array($n, array('method'))){ $flags .= ' '.$n.'="'.(isset($set[$n]) ? (is_array($opt) ? (in_array(strtolower($set[$n]), $opt) ? $set[$n] : reset($opt)) : $set[$n] ) : (is_array($opt) ? reset($opt) : NULL)).'"'; }
                 }
-                $str = '<form'.$flags.'>'."\n".$str."\n".'</form>';
+                if(!preg_match('#\<input[^\>]+type="submit"[^\>]*\>#', $str)){ $submitter = "\n".self::decode_form_marked('[?submit? Submit](- "submit-button")'); }
+                $str = '<form'.$flags.'>'."\n".$str.$submitter."\n".'</form>';
             }
         }
         return $str;
