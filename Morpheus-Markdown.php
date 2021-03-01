@@ -33,7 +33,7 @@ class Markdown extends \Morpheus {
 			return '';
 		}
 	}
-	
+
 	function _encode_order(){ return array_reverse(self::_decode_order()); }
 	function _decode_order(){ return array('clean',
         'qTranslate',
@@ -57,7 +57,7 @@ class Markdown extends \Morpheus {
         'p_br',
         'formification',
         'clean'); }
-	
+
 	/* Encode: HTML to Markdown*/
 	function encode($html=FALSE, $set=array()){
 		if($html === FALSE && isset($this)){ $html = $this->_template; }
@@ -68,7 +68,7 @@ class Markdown extends \Morpheus {
 		}
 		return $md;
 	}
-	
+
 	/* Decode: Markdown to HTML */
 	function decode($md=FALSE, $set=array()){
 		if($md === FALSE && isset($this)){ $md = $this->_template; }
@@ -80,31 +80,63 @@ class Markdown extends \Morpheus {
 		}
 		return $html;
 	}
-	
+
 	/* ELEMENTS */
 	function encode_bold($str=NULL, $set=array()){ return self::_encode_tag_only($str, 'strong', '**', '**', array('b','strong') ); }
 	function decode_bold($str=NULL, $set=array()){ return self::_decode_tag_only($str, 'strong', '**', '**', array('b','strong') ); }
-	
+
 	function encode_italic($str=NULL, $set=array()){ return self::_encode_tag_only($str, 'em', '*', '*', array('i','em') ); }
 	function decode_italic($str=NULL, $set=array()){ return self::_decode_tag_only($str, 'em', '*', '*', array('i','em') ); }
-	
+
 	function encode_strikethrough($str=NULL, $set=array()){ return self::_encode_tag_only($str, 's', '~~', '~~' ); }
 	function decode_strikethrough($str=NULL, $set=array()){ return self::_decode_tag_only($str, 's', '~~', '~~' ); }
-	
+
 	function encode_underline($str=NULL, $set=array()){ return self::_encode_tag_only($str, 'u', '_', '_'); }
 	function decode_underline($str=NULL, $set=array()){ return self::_decode_tag_only($str, 'u', '_', '_'); }
 
 	function encode_link($str=NULL, $set=array()){
-		$str = preg_replace('#\<a href\=\"([^\"]+)\"\>([^\<]+)\<\/a\>#', '[\\2](\\1)', $str);
+		preg_match_all('#(^|[ ]?)\<a href\=\"([^\"]+)\"( title\=\"([^\"]+)\")?\>([^\<]+)\<\/a\>([ ]?|$)#', $str, $buffer);
+		foreach($buffer[0] as $i=>$match){
+			$link = $buffer[1][$i];
+			if($buffer[5][$i] == self::human_url($buffer[2][$i])){ $link .= $buffer[2][$i]; }
+			else{ $link .= '['.$buffer[5][$i].']('.$buffer[2][$i].(strlen($buffer[3][$i])>1 ? ' "'.$buffer[4][$i].'"' : NULL).')'; }
+			$link .= $buffer[6][$i];
+			$str = str_replace($match, $link, $str);
+		}
 		return $str;
 	}
 	function decode_link($str=NULL, $set=array()){
 		$str = preg_replace('#(^|[^\!])[\[]([^\]]+)[\]][\(]([^ \)]+)\s([\"]([^\"\)]+)[\"])[\)]#', '\\1<a href="\\3" title="\\5">\\2</a>', $str);
 		$str = preg_replace('#(^|[^\!])[\[]([^\]]+)[\]][\(]([^\)]+)[\)]#', '\\1<a href="\\3">\\2</a>', $str);
-		$str = preg_replace('#\<((http[s]?\:\/\/|mailto\:)([^ \>]+))\>#', '<a href="\\1">\\3</a>', $str);
+		preg_match_all('#(^|[ \<])((http[s]?\:\/\/|mailto\:)([^ \>]+))([ \>]|$)#', $str, $buffer); // '\\1<a href="\\2">\\4</a>\\5',
+		foreach($buffer[0] as $i=>$match){
+			$link = NULL;
+			$link .= (!in_array($buffer[1][$i], array('<')) ? $buffer[1][$i] : NULL);
+			$link .= '<a href="'.$buffer[2][$i].'">'.self::human_url($buffer[2][$i]).'</a>';
+			$link .= (!in_array($buffer[5][$i], array('>')) ? $buffer[5][$i] : NULL);
+			$str = str_replace($match, $link, $str);
+		}
 		return $str;
 	}
-	
+	public function human_url($url){
+		$name = parse_url($url);
+		foreach(array('scheme','pass','query','fragment') as $el){ unset($name[$el]); }
+		if($name['path'] == '/'){ unset($name['path']); }
+		return self::unparse_url($name);
+	}
+	public function unparse_url($parsed_url) {
+	  $scheme   = isset($parsed_url['scheme']) ? $parsed_url['scheme'] . '://' : '';
+	  $host     = isset($parsed_url['host']) ? $parsed_url['host'] : '';
+	  $port     = isset($parsed_url['port']) ? ':' . $parsed_url['port'] : '';
+	  $user     = isset($parsed_url['user']) ? $parsed_url['user'] : '';
+	  $pass     = isset($parsed_url['pass']) ? ':' . $parsed_url['pass']  : '';
+	  $pass     = ($user || $pass) ? "$pass@" : '';
+	  $path     = isset($parsed_url['path']) ? $parsed_url['path'] : '';
+	  $query    = isset($parsed_url['query']) ? '?' . $parsed_url['query'] : '';
+	  $fragment = isset($parsed_url['fragment']) ? '#' . $parsed_url['fragment'] : '';
+	  return "$scheme$user$pass$host$port$path$query$fragment";
+	}
+
 	function encode_image($str=NULL, $set=array()){
 		$str = preg_replace('#\<img src\=\"([^\"]+)\" title=\"([^\"]+)\"\s*\/\>#', '![\\2](\\1)', $str);
 		return $str;
@@ -141,7 +173,7 @@ class Markdown extends \Morpheus {
 		}
 		return $str;
 	}
-	
+
 	function encode_horizontal_rule($str=NULL, $set=array()){
 		$str = preg_replace('#(\s*)<hr/>(\s*)#i', '\\1----------\\2', $str);
 		return $str;
@@ -151,10 +183,10 @@ class Markdown extends \Morpheus {
 		$str = preg_replace('#(^|\n)([-][ ]?[-][ ]?[-][ -]*)(\n|$)#', '\\1<hr/>\\3', $str);
 		return $str;
 	}
-	
+
 	function encode_inline_code($str=NULL, $set=array()){ return self::_encode_tag_only($str, 'code', '`', '`' ); }
 	function decode_inline_code($str=NULL, $set=array()){ return self::_decode_tag_only($str, 'code', '`', '`' ); }
-	
+
 	function encode_syntax_highlighting($str=NULL, $set=array()){
 		return $str;
 	}
@@ -169,10 +201,10 @@ class Markdown extends \Morpheus {
 		$str = str_replace('¤', '```', $str);
 		return $str;
 	}
-	
+
 	function encode_blockquote($str=NULL, $set=array()){ return $str; }
 	function decode_blockquote($str=NULL, $set=array()){ return self::_decode_prefixed_line($str, '[\>]\s', NULL, 'blockquote'); }
-	
+
 	function encode_table($str=NULL, $set=array()){ return $str; }
 	function decode_table($str=NULL, $set=array()){
 		$tnr = $tstr = $hdr = array();
@@ -237,20 +269,20 @@ class Markdown extends \Morpheus {
 		//print '<!-- '.print_r($align, TRUE).' -->';
 		return $align;
 	}
-	
+
 	function encode_lists($str=NULL, $set=array()){ return $str; }
 	function decode_lists($str=NULL, $set=array()){
 		$str = self::_decode_prefixed_line($str, '[\*\-\+]\s', 'li', 'ul');
-		$str = self::_decode_prefixed_line($str, '[0-9]+[\.]\s', 'li', 'ol');
+		$str = self::_decode_prefixed_line($str, '[0-9a-z]+[\.]\s', 'li', 'ol');
 		return $str;
 	}
-	
+
 	function encode_task_done($str=NULL, $set=array()){ return $str; }
 	function decode_task_done($str=NULL, $set=array()){
 		//y$str = str_replace('@done', '<i class="fa fa-fw fa-check text-success"></i>', $str);
 		return $str;
-		
-		
+
+
 		$str = str_replace('</li>', '¤', $str);
 		if(preg_match_all('#<li([^>]*)>([^¤]+)[¤]#', $str, $buffer) > 0){
 			foreach($buffer[0] as $a=>$line){
@@ -265,7 +297,7 @@ class Markdown extends \Morpheus {
 		$str = str_replace('¤', '</li>', $str);
 		return $str;
 	}
-	
+
 	function encode_p_br($str=NULL, $set=array()){
 		$str = str_replace('</p>', '¤', $str);
 		if(preg_match_all('#(^|\s+)\<p\>([^¤]+)¤(\s+|$)#i', $str, $buffer) > 0){
@@ -292,7 +324,7 @@ class Markdown extends \Morpheus {
 				preg_match('#^(\s*)([\<][\/]?([a-z0-9]+|!--)([^\>]+)?[\>])?#', $line, $buffer);
 				if(isset($buffer[3])){
                     if(!in_array(strtolower($buffer[3]), $ignorable)){
-                        //!isset($lines[$i-1]) || preg_match('#^\s*$#', $lines[$i-1]) ||  
+                        //!isset($lines[$i-1]) || preg_match('#^\s*$#', $lines[$i-1]) ||
 						//&& (!isset($lines[$i+1]) || preg_match('#^\s*$#', $lines[$i+1]))
 						if(!($open === FALSE) ){
 							$lines[$i] = $buffer[1].($open === TRUE ? '<p>' : NULL).preg_replace('#^'.$buffer[1].'#', '', $lines[$i]).($close ? '</p>' : '<br/>');
@@ -311,7 +343,7 @@ class Markdown extends \Morpheus {
 		return $str;
 	}
 	/* Markdown FORM */
-	
+
 	function encode_form_marked($str=NULL, $set=array()){ return $str; }
     function decode_form_marked($md=NULL, $set=array()){
       //*debug*/ print_r($set);
@@ -458,7 +490,7 @@ class Markdown extends \Morpheus {
                 foreach($attr as $n=>$opt){
                     if(isset($set[$n]) || in_array($n, array('method'))){ $flags .= ' '.$n.'="'.(isset($set[$n]) ? (is_array($opt) ? (in_array(strtolower($set[$n]), $opt) ? $set[$n] : reset($opt)) : $set[$n] ) : (is_array($opt) ? reset($opt) : NULL)).'"'; }
                 }
-                if(!preg_match('#\<input[^\>]+type="submit"[^\>]*\>#', $str)){ $submitter = "\n".self::decode_form_marked('[?submit? Submit](- "submit-button")'); }
+                if(!preg_match('#\<input[^\>]+type="submit"[^\>]*\>#', $str)){ $submitter = "\n".self::decode_form_marked('[?submit? '.(isset($set['submit-text']) ? $set['submit-text'] : 'Submit').'](- "submit-button")'); }
                 $str = '<form'.$flags.'>'."\n".$str.$submitter."\n".'</form>';
             }
         }
@@ -474,7 +506,7 @@ class Markdown extends \Morpheus {
         }
         return $str;
     }
-	
+
 	/* Helper Functions */
 	function _encode_tag_only($str=NULL, $tag='', $prefix='', $postfix='', $options=array(), $newline=FALSE){
 		//$options = array('i', 'em');
@@ -501,12 +533,13 @@ class Markdown extends \Morpheus {
 	function _decode_prefixed_line($str=NULL, $prefix=NULL, $tag=NULL, $group=NULL){
 		$lines = explode("\n", $str); $depth = $spacer = 0;
 		foreach($lines as $i=>$line){
+			$type = preg_replace('#^(\s*)(.)(.*)$#','\\2', $line);
 			if(preg_match('#^(\s*)'.$prefix.'(.*)(\s*)$#', $line, $buffer)){
 				/*fix*/ $b1 = str_replace(str_repeat(' ', 3), "\t", $buffer[1]);
 				$nl = (!($tag===NULL) ? '<'.$tag.' depth="'.$depth.'" b="'.(strlen($b1)+1).'">' : $buffer[1]).$buffer[2].(!($tag===NULL) ? '</'.$tag.'>' : NULL).$buffer[3];
 				if((strlen($b1)+1) != $depth){
 					if((strlen($b1)+1) > $depth){
-						$lines[$i] = preg_replace('#^(\s*)(.*)$#', '\\1'.str_repeat('<'.$group.' depth="'.$depth.'" b="'.(strlen($b1)+1).'">', ( (strlen($b1)+1) - $depth ) ).'\\2', $nl);
+						$lines[$i] = preg_replace('#^(\s*)(.*)$#', '\\1'.str_repeat('<'.$group.' depth="'.$depth.'" b="'.(strlen($b1)+1).'"'.($type != NULL ? ' type="'.$type.'"' : NULL).'>', ( (strlen($b1)+1) - $depth ) ).'\\2', $nl);
 					}
 					else{
 						$lines[$i-1] = preg_replace('#$(.*)(\s*)$#', '\\1'.str_repeat('</'.$group.'>', ( $depth - (strlen($b1)+1) ) ).'\\2', $lines[$i-1]);
@@ -527,7 +560,7 @@ class Markdown extends \Morpheus {
 		$str = implode("\n", $lines);
 		return $str;
 	}
-	
+
 	function strip_all_html($str=NULL, $set=array()){
 		$str = preg_replace('#\<[\/]?[^\>]+\>#i', '', $str);
 		return $str;
@@ -536,7 +569,7 @@ class Markdown extends \Morpheus {
 		return $str;
 		return str_replace(array('�',"\r",'¤'), array('','',''), $str);
 	}
-	
+
 	/*OTHER*/
 	function str(){ return $this->get_template(); }
 	function TOC($str=NULL, $set=array()){
